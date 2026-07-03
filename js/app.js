@@ -70,14 +70,11 @@ function renderHome() {
 
   const recent = games.slice(0, 6);
   viewEl.innerHTML = `
-    <button class="btn btn-primary btn-block" id="log-game-btn" style="padding:16px; font-size:1.05rem; margin-bottom:18px;">
+    <button class="btn btn-primary btn-block" id="log-game-btn" style="padding:17px; font-size:1.05rem; margin-bottom:20px;">
       + Log a Game
     </button>
     <h2>Recent games</h2>
-    ${recent.length === 0 ? `<p>No games logged yet.</p>` : ''}
-    <div class="card" style="padding:0;">
-      ${recent.map(gameRowHTML).join('')}
-    </div>
+    ${recent.length === 0 ? `<p>No games logged yet.</p>` : recent.map(gameRowHTML).join('')}
   `;
   document.getElementById('log-game-btn').addEventListener('click', () => navigate('log'));
   recent.forEach((g) => {
@@ -91,10 +88,13 @@ function gameRowHTML(g) {
   const dateStr = new Date(g.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   const chips = colorIdentityHex(winnerSeat?.colorIdentity || []);
   return `
-    <div class="list-row" id="game-${g.id}" style="cursor:pointer;">
-      <div>
-        <div style="font-weight:500;">${winnerSeat?.playerName || '—'} <span class="text-dim" style="color:var(--ink-faint); font-weight:400;">won</span></div>
-        <div style="font-size:0.8rem; color:var(--ink-dim);">${winnerSeat?.commanderName || 'Unknown commander'} · ${g.podSize} players</div>
+    <div class="card list-row" id="game-${g.id}" style="cursor:pointer;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        ${avatarHTML(winnerSeat?.playerName || '?', 42)}
+        <div>
+          <div style="font-weight:700;">${winnerSeat?.playerName || '—'} <span style="color:var(--ink-faint); font-weight:500;">won</span></div>
+          <div style="font-size:0.8rem; color:var(--ink-dim);">${winnerSeat?.commanderName || 'Unknown commander'} · ${g.podSize} players</div>
+        </div>
       </div>
       <div style="text-align:right;">
         <div class="color-chip-row" style="justify-content:flex-end; margin-bottom:4px;">
@@ -139,19 +139,23 @@ function renderPlayers() {
 
   viewEl.innerHTML = `
     <button class="btn btn-primary btn-block" id="add-player-btn" style="margin-bottom:16px;">+ Add Player</button>
-    ${players.length === 0 ? `<p>No players yet.</p>` : `
-      <div class="card" style="padding:0;">
-        ${winRows.map((r) => `
-          <div class="list-row">
-            <div style="font-weight:500;">${r.name}</div>
-            <div style="text-align:right;">
-              <div class="numeric">${r.wins}/${r.played}</div>
-              <div style="font-size:0.72rem; color:var(--ink-faint);">${Math.round(r.winRate * 100)}% win rate</div>
+    ${players.length === 0 ? `<p>No players yet.</p>` : winRows.map((r) => `
+      <div class="card list-row">
+        <div style="display:flex; align-items:center; gap:12px; flex:1;">
+          ${avatarHTML(r.name, 44)}
+          <div style="flex:1;">
+            <div style="font-weight:700;">${r.name}</div>
+            <div class="stat-bar-track" style="margin-top:6px;">
+              <div class="stat-bar-fill" style="width:${Math.round(r.winRate * 100)}%; background:${rateColor(r.winRate)};"></div>
             </div>
           </div>
-        `).join('')}
+        </div>
+        <div style="text-align:right; margin-left:10px;">
+          <div class="numeric">${Math.round(r.winRate * 100)}%</div>
+          <div style="font-size:0.68rem; color:var(--ink-faint);">${r.wins}/${r.played}</div>
+        </div>
       </div>
-    `}
+    `).join('')}
   `;
   document.getElementById('add-player-btn').addEventListener('click', () => {
     openModal(`
@@ -187,17 +191,15 @@ function renderDecks() {
       const owned = decks.filter((d) => d.ownerId === p.id);
       if (owned.length === 0) return '';
       return `
-        <h3 style="margin-top:14px;">${p.name}</h3>
-        <div class="card" style="padding:0;">
-          ${owned.map((d) => `
-            <div class="list-row">
-              <div style="display:flex; align-items:center; gap:10px;">
-                <div class="color-chip-row">${colorIdentityHex(d.colorIdentity).map((c) => `<span style="background:${c}"></span>`).join('')}</div>
-                <div>${d.commanderName}</div>
-              </div>
+        <h3 style="margin-top:16px;">${p.name}</h3>
+        ${owned.map((d) => `
+          <div class="card list-row">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div class="color-chip-row">${colorIdentityHex(d.colorIdentity).map((c) => `<span style="background:${c}"></span>`).join('')}</div>
+              <div style="font-weight:600;">${d.commanderName}</div>
             </div>
-          `).join('')}
-        </div>
+          </div>
+        `).join('')}
       `;
     }).join('') || '<p>No decks yet.</p>'}
   `;
@@ -298,12 +300,12 @@ function renderStats() {
   viewEl.innerHTML = `
     <h2>Wins by person</h2>
     <div class="card">
-      ${byPerson.map((r) => barRow(r.name, r.wins, maxPersonWins, `${r.wins} win${r.wins === 1 ? '' : 's'}`)).join('')}
+      ${byPerson.map((r) => barRow(r.name, r.wins, maxPersonWins, `${r.wins} win${r.wins === 1 ? '' : 's'}`, rateColor(r.winRate))).join('')}
     </div>
 
     <h2>Top commanders by wins</h2>
-    <div class="card">
-      ${topCommanders.length ? topCommanders.map((r) => barRow(r.commanderName, r.wins, maxCmdWins, `${r.wins} win${r.wins === 1 ? '' : 's'}`)).join('') : '<p>No wins logged yet.</p>'}
+    <div class="card card-dark">
+      ${topCommanders.length ? topCommanders.map((r) => barRow(r.commanderName, r.wins, maxCmdWins, `${r.wins} win${r.wins === 1 ? '' : 's'}`, 'var(--accent)', true)).join('') : '<p style="color:rgba(243,237,227,0.6);">No wins logged yet.</p>'}
     </div>
 
     <h2>Most played commanders</h2>
@@ -314,7 +316,14 @@ function renderStats() {
     <h2>Win rate by table position</h2>
     <p style="font-size:0.82rem;">Normalized so "last seat" means the same thing whether it was a 3-player or 6-player pod.</p>
     <div class="card">
-      ${seatRates.map((r) => barRow(seatLabel(r.label), r.wins, Math.max(1, ...seatRates.map(x => x.played)), `${Math.round(r.winRate * 100)}% (${r.wins}/${r.played})`)).join('')}
+      <div class="gauge-row">
+        ${seatRates.map((r) => `
+          <div>
+            ${arcGaugeHTML({ percent: r.winRate * 100, size: 96, strokeWidth: 9, color: rateColor(r.winRate), valueText: `${Math.round(r.winRate * 100)}%`, labelText: `${r.wins}/${r.played}` })}
+            <div class="gauge-caption">${seatLabel(r.label)}</div>
+          </div>
+        `).join('')}
+      </div>
     </div>
 
     <h2>Colors — everyone</h2>
@@ -347,25 +356,28 @@ function seatLabel(l) {
   return { first: 'Went first', middle: 'Middle seat', last: 'Went last' }[l] || l;
 }
 
-function barRow(label, value, max, rightText) {
+function barRow(label, value, max, rightText, fillColor = 'var(--accent)', onDark = false) {
   const pct = Math.round((value / max) * 100);
+  const textColor = onDark ? 'rgba(243,237,227,0.55)' : 'var(--ink-faint)';
+  const labelColor = onDark ? 'var(--dark-card-text)' : 'var(--ink)';
   return `
     <div class="stat-bar-row">
-      <div class="stat-bar-label"><span>${label}</span><span class="numeric" style="color:var(--ink-faint);">${rightText}</span></div>
-      <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${pct}%"></div></div>
+      <div class="stat-bar-label"><span style="color:${labelColor};">${label}</span><span class="numeric" style="color:${textColor};">${rightText}</span></div>
+      <div class="stat-bar-track" style="background:${onDark ? 'rgba(255,255,255,0.12)' : 'var(--surface-alt)'};"><div class="stat-bar-fill" style="width:${pct}%; background:${fillColor};"></div></div>
     </div>
   `;
 }
 
 function colorBarRow(row, max) {
   const pct = Math.round((row.played / max) * 100);
+  const fill = MANA_COLORS[row.color]?.hex || 'var(--ink-faint)';
   return `
     <div class="stat-bar-row">
       <div class="stat-bar-label">
         <span style="display:flex; align-items:center; gap:6px;"><img src="${manaSymbolUrl(row.color)}" alt="" style="width:15px; height:15px;">${row.label}</span>
         <span class="numeric" style="color:var(--ink-faint);">${row.played} played · ${row.wins} won (${Math.round(row.winRate * 100)}%)</span>
       </div>
-      <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${pct}%"></div></div>
+      <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${pct}%; background:${fill};"></div></div>
     </div>
   `;
 }
