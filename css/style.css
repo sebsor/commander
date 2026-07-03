@@ -337,6 +337,7 @@ label {
 .commander-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  align-items: start;
   gap: 10px;
   max-height: 46vh;
   overflow-y: auto;

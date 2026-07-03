@@ -114,6 +114,22 @@ const stats = {
       .slice(0, limit);
   },
 
+  // Win rate for one specific deck (not "this commander name across everyone" —
+  // byCommander already covers that). Matches on seat.deckId, which is exact,
+  // rather than commander name, since a player could rebuild a new deck around
+  // a commander they've played before, and those should count separately.
+  deckStats(games, deckId) {
+    let played = 0;
+    let wins = 0;
+    for (const g of games) {
+      const seat = g.seats.find((s) => s.deckId === deckId);
+      if (!seat) continue;
+      played += 1;
+      if (g.winnerId === seat.playerId) wins += 1;
+    }
+    return { played, wins, winRate: played ? wins / played : 0 };
+  },
+
   // Seat position win rate, normalized by pod size so "seat 3 of 3" (last)
   // isn't lumped in with "seat 3 of 6" (middle). Bucketed into
   // first / middle / last since that's what's actually comparable

@@ -7,7 +7,7 @@
 // one is for a human to glance at, that one is for the browser's cache), so
 // nothing keeps them in sync automatically. Bumping this is now part of the
 // same routine as bumping the cache version.
-const APP_VERSION = 'v31';
+const APP_VERSION = 'v33';
 
 const viewEl = document.getElementById('view');
 const headerTitle = document.getElementById('header-title');
@@ -252,6 +252,7 @@ function openEditPlayerModal(playerId, currentName) {
 function renderDecks() {
   const players = db.getPlayers();
   const decks = db.getDecks();
+  const games = db.getGames();
 
   if (players.length === 0) {
     viewEl.classList.remove('has-action-bar');
@@ -266,14 +267,21 @@ function renderDecks() {
       if (owned.length === 0) return '';
       return `
         <h3 style="margin-top:16px;">${p.name}</h3>
-        ${owned.map((d) => `
+        ${owned.map((d) => {
+          const s = stats.deckStats(games, d.id);
+          return `
           <div class="card list-row" id="deck-${d.id}" style="cursor:pointer;">
             <div style="display:flex; align-items:center; gap:12px;">
               <div class="color-chip-row">${colorIdentityHex(d.colorIdentity).map((c) => `<span style="background:${c}"></span>`).join('')}</div>
               <div style="font-weight:600;">${d.commanderName}</div>
             </div>
+            <div style="text-align:right;">
+              <div class="numeric" style="color:${s.played ? rateColor(s.winRate) : 'var(--ink-faint)'};">${s.played ? Math.round(s.winRate * 100) + '%' : '—'}</div>
+              <div style="font-size:0.68rem; color:var(--ink-faint);">${s.wins}/${s.played}</div>
+            </div>
           </div>
-        `).join('')}
+        `;
+        }).join('')}
       `;
     }).join('') || '<p>No commanders yet — use the button below to add one.</p>'}
     <div class="action-bar">
@@ -442,7 +450,7 @@ function renderStats() {
   viewEl.innerHTML = `
     <h2>Wins by person</h2>
     <div class="card">
-      ${byPerson.slice(0, 3).map((r) => barRow(r.name, r.wins, maxPersonWins, `${r.wins} win${r.wins === 1 ? '' : 's'}`, rateColor(r.winRate))).join('')}
+      ${byPerson.slice(0, 3).map((r) => `<div id="wbp-${r.playerId}" style="cursor:pointer;">${barRow(r.name, r.wins, maxPersonWins, `${r.wins} win${r.wins === 1 ? '' : 's'}`, rateColor(r.winRate))}</div>`).join('')}
     </div>
     ${byPerson.length > 3 ? `<button class="btn btn-ghost" id="view-all-person">View all ${byPerson.length} players</button>` : ''}
 
@@ -475,25 +483,16 @@ function renderStats() {
       ${comboAll.length ? comboAll.map((r) => comboBarRow(r, maxComboPlayed)).join('') : '<p>No color data yet.</p>'}
     </div>
 
-    <h2>Winning color combinations by player</h2>
-    <label for="combo-player-select">Player</label>
-    <select id="combo-player-select">
-      ${players.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}
-    </select>
-    <div class="card" id="combo-by-player-card"></div>
-
     <h2>Winning individual colors</h2>
     <div class="card">
       ${colorAll.length ? colorAll.map((r) => colorBarRow(r, maxColorPlayed)).join('') : '<p>No color data yet.</p>'}
     </div>
-
-    <h2>Winning colors by player</h2>
-    <label for="color-player-select">Player</label>
-    <select id="color-player-select">
-      ${players.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}
-    </select>
-    <div class="card" id="color-by-player-card"></div>
   `;
+
+  byPerson.slice(0, 3).forEach((r) => {
+    const el = document.getElementById('wbp-' + r.playerId);
+    if (el) el.addEventListener('click', () => showPlayerDetailModal(r.playerId, r.name));
+  });
 
   const viewAllPerson = document.getElementById('view-all-person');
   if (viewAllPerson) {
@@ -515,28 +514,56 @@ function renderStats() {
       openStatListModal('Most played commanders', mostPlayedFull.map((r) => barRow(r.commanderName, r.played, maxPlayed, `${r.played} game${r.played === 1 ? '' : 's'}`)).join(''));
     });
   }
+}
 
-  const colorPlayerSelect = document.getElementById('color-player-select');
-  function renderColorByPlayer() {
-    const rows = stats.colorBreakdown(games, colorPlayerSelect.value);
-    const max = Math.max(1, ...rows.map((r) => r.played));
-    document.getElementById('color-by-player-card').innerHTML = rows.length
-      ? rows.map((r) => colorBarRow(r, max)).join('')
-      : '<p>No games logged for this player yet.</p>';
-  }
-  colorPlayerSelect.addEventListener('change', renderColorByPlayer);
-  renderColorByPlayer();
 
-  const comboPlayerSelect = document.getElementById('combo-player-select');
-  function renderComboByPlayer() {
-    const rows = stats.colorComboBreakdown(games, comboPlayerSelect.value);
-    const max = Math.max(1, ...rows.map((r) => r.played));
-    document.getElementById('combo-by-player-card').innerHTML = rows.length
-      ? rows.map((r) => comboBarRow(r, max)).join('')
-      : '<p>No games logged for this player yet.</p>';
-  }
-  comboPlayerSelect.addEventListener('change', renderComboByPlayer);
-  renderComboByPlayer();
+// Combines three things that were previously spread across the page: a
+// player's commanders (with the per-deck win rate from stats.deckStats,
+// same function the Commanders tab rows use), and their color combination
+// and individual-color breakdowns (previously separate dropdown-driven
+// sections lower on the Stats page — moved here since "this player's colors"
+// is naturally part of their profile, not a separate standing section).
+function showPlayerDetailModal(playerId, playerName) {
+  const games = db.getGames();
+  const playerDecks = db.getDecks().filter((d) => d.ownerId === playerId);
+  const comboRows = stats.colorComboBreakdown(games, playerId);
+  const colorRows = stats.colorBreakdown(games, playerId);
+  const maxCombo = Math.max(1, ...comboRows.map((r) => r.played));
+  const maxColor = Math.max(1, ...colorRows.map((r) => r.played));
+
+  const deckRowsHtml = playerDecks.map((d) => {
+    const s = stats.deckStats(games, d.id);
+    const chips = colorIdentityHex(d.colorIdentity);
+    return `
+      <div class="list-row">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="color-chip-row">${chips.map((c) => `<span style="background:${c}"></span>`).join('')}</div>
+          <div style="font-weight:600;">${d.commanderName}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="numeric" style="color:${s.played ? rateColor(s.winRate) : 'var(--ink-faint)'};">${s.played ? Math.round(s.winRate * 100) + '%' : '—'}</div>
+          <div style="font-size:0.68rem; color:var(--ink-faint);">${s.wins}/${s.played}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  openModal(`
+    <h2>${playerName}</h2>
+    <div class="card">
+      ${deckRowsHtml || '<p>No commanders added yet.</p>'}
+    </div>
+
+    <h2>Winning color combinations</h2>
+    <div class="card">
+      ${comboRows.length ? comboRows.map((r) => comboBarRow(r, maxCombo)).join('') : '<p>No games logged yet.</p>'}
+    </div>
+
+    <h2>Winning colors</h2>
+    <div class="card">
+      ${colorRows.length ? colorRows.map((r) => colorBarRow(r, maxColor)).join('') : '<p>No games logged yet.</p>'}
+    </div>
+  `);
 }
 
 function openStatListModal(title, rowsHtml) {
