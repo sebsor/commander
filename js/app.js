@@ -93,14 +93,14 @@ function gameRowHTML(g) {
   return `
     <div class="list-row" id="game-${g.id}" style="cursor:pointer;">
       <div>
-        <div style="font-weight:500;">${winnerSeat?.playerName || '—'} <span class="text-dim" style="color:var(--text-faint); font-weight:400;">won</span></div>
-        <div style="font-size:0.8rem; color:var(--text-dim);">${winnerSeat?.commanderName || 'Unknown commander'} · ${g.podSize} players</div>
+        <div style="font-weight:500;">${winnerSeat?.playerName || '—'} <span class="text-dim" style="color:var(--ink-faint); font-weight:400;">won</span></div>
+        <div style="font-size:0.8rem; color:var(--ink-dim);">${winnerSeat?.commanderName || 'Unknown commander'} · ${g.podSize} players</div>
       </div>
       <div style="text-align:right;">
         <div class="color-chip-row" style="justify-content:flex-end; margin-bottom:4px;">
           ${chips.map((c) => `<span style="background:${c}"></span>`).join('')}
         </div>
-        <div class="numeric" style="font-size:0.72rem; color:var(--text-faint);">${dateStr}</div>
+        <div class="numeric" style="font-size:0.72rem; color:var(--ink-faint);">${dateStr}</div>
       </div>
     </div>
   `;
@@ -146,7 +146,7 @@ function renderPlayers() {
             <div style="font-weight:500;">${r.name}</div>
             <div style="text-align:right;">
               <div class="numeric">${r.wins}/${r.played}</div>
-              <div style="font-size:0.72rem; color:var(--text-faint);">${Math.round(r.winRate * 100)}% win rate</div>
+              <div style="font-size:0.72rem; color:var(--ink-faint);">${Math.round(r.winRate * 100)}% win rate</div>
             </div>
           </div>
         `).join('')}
@@ -351,7 +351,7 @@ function barRow(label, value, max, rightText) {
   const pct = Math.round((value / max) * 100);
   return `
     <div class="stat-bar-row">
-      <div class="stat-bar-label"><span>${label}</span><span class="numeric" style="color:var(--text-faint);">${rightText}</span></div>
+      <div class="stat-bar-label"><span>${label}</span><span class="numeric" style="color:var(--ink-faint);">${rightText}</span></div>
       <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${pct}%"></div></div>
     </div>
   `;
@@ -363,7 +363,7 @@ function colorBarRow(row, max) {
     <div class="stat-bar-row">
       <div class="stat-bar-label">
         <span style="display:flex; align-items:center; gap:6px;"><img src="${manaSymbolUrl(row.color)}" alt="" style="width:15px; height:15px;">${row.label}</span>
-        <span class="numeric" style="color:var(--text-faint);">${row.played} played · ${row.wins} won (${Math.round(row.winRate * 100)}%)</span>
+        <span class="numeric" style="color:var(--ink-faint);">${row.played} played · ${row.wins} won (${Math.round(row.winRate * 100)}%)</span>
       </div>
       <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${pct}%"></div></div>
     </div>

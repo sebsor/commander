@@ -127,11 +127,11 @@ function openManualCommanderEntry(onSelect) {
     input.addEventListener('blur', async () => {
       const name = input.value.trim();
       if (!name) return;
-      preview.innerHTML = `<p style="color:var(--text-faint);">Looking up on Scryfall…</p>`;
+      preview.innerHTML = `<p style="color:var(--ink-faint);">Looking up on Scryfall…</p>`;
       fetched = await scryfall.findCommander(name);
       preview.innerHTML = fetched
         ? `<div class="color-chip-row">${colorIdentityHex(fetched.colorIdentity).map((c) => `<span style="background:${c}"></span>`).join('')}</div><p style="margin-top:6px;">Found — colors filled in.</p>`
-        : `<p style="color:var(--text-faint);">Not found — will save without color identity.</p>`;
+        : `<p style="color:var(--ink-faint);">Not found — will save without color identity.</p>`;
     });
 
     document.getElementById('manual-cmd-save').addEventListener('click', () => {
