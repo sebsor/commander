@@ -452,6 +452,28 @@ label {
 }
 .empty-state .glyph { font-size: 2rem; display: block; margin-bottom: 10px; }
 
+/* ---- Tappable row affordance ----
+   A chevron rather than caption text, since it scales per-row without
+   adding a sentence that only makes sense once at the top of a section.
+   Pure ::after, so applying this class needs no extra markup anywhere. */
+.tappable-row {
+  position: relative;
+  cursor: pointer;
+  padding-right: 22px;
+}
+.tappable-row::after {
+  content: '›';
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-faint);
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+
 /* ---- Card image preview loading state ----
    Physical Magic cards are a fixed 2.5"x3.5" (5:7) ratio, and Scryfall's
    renders always match it — so reserving that exact aspect ratio up front

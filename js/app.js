@@ -7,7 +7,7 @@
 // one is for a human to glance at, that one is for the browser's cache), so
 // nothing keeps them in sync automatically. Bumping this is now part of the
 // same routine as bumping the cache version.
-const APP_VERSION = 'v34';
+const APP_VERSION = 'v35';
 
 const viewEl = document.getElementById('view');
 const headerTitle = document.getElementById('header-title');
@@ -178,7 +178,7 @@ function renderPlayers() {
   viewEl.classList.add('has-action-bar');
   viewEl.innerHTML = `
     ${players.length === 0 ? `<p>No players yet — use the button below to add one.</p>` : winRows.map((r) => `
-      <div class="card list-row" id="player-${r.playerId}" style="cursor:pointer;">
+      <div class="card list-row tappable-row" id="player-${r.playerId}">
         <div style="display:flex; align-items:center; gap:12px; flex:1;">
           ${avatarHTML(r.name, 44)}
           <div style="flex:1;">
@@ -270,7 +270,7 @@ function renderDecks() {
         ${owned.map((d) => {
           const s = stats.deckStats(games, d.id);
           return `
-          <div class="card list-row" id="deck-${d.id}" style="cursor:pointer;">
+          <div class="card list-row tappable-row" id="deck-${d.id}">
             <div style="display:flex; align-items:center; gap:12px;">
               <div class="color-chip-row">${colorIdentityHex(d.colorIdentity).map((c) => `<span style="background:${c}"></span>`).join('')}</div>
               <div style="font-weight:600;">${d.commanderName}</div>
@@ -450,7 +450,7 @@ function renderStats() {
   viewEl.innerHTML = `
     <h2>Wins by person</h2>
     <div class="card">
-      ${byPerson.slice(0, 3).map((r) => `<div id="wbp-${r.playerId}" style="cursor:pointer;">${barRow(r.name, r.wins, maxPersonWins, `${r.wins} win${r.wins === 1 ? '' : 's'}`, rateColor(r.winRate))}</div>`).join('')}
+      ${byPerson.slice(0, 3).map((r) => `<div id="wbp-${r.playerId}" class="tappable-row">${barRow(r.name, r.wins, maxPersonWins, `${r.wins} win${r.wins === 1 ? '' : 's'}`, rateColor(r.winRate))}</div>`).join('')}
     </div>
     ${byPerson.length > 3 ? `<button class="btn btn-ghost" id="view-all-person">View all ${byPerson.length} players</button>` : ''}
 
