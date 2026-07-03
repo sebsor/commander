@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tavern-ledger-v15-bgtest';
+const CACHE_NAME = 'tavern-ledger-v15';
 const CORE_ASSETS = [
   './',
   './index.html',

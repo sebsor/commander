@@ -15,7 +15,7 @@ function setActiveNav(view) {
 
 function navigate(view) {
   setActiveNav(view);
-  const titles = { home: 'BG TEST 2', players: 'Players', decks: 'Commanders', stats: 'Stats', log: 'Log a Game' };
+  const titles = { home: 'Home', players: 'Players', decks: 'Commanders', stats: 'Stats', log: 'Log a Game' };
   headerTitle.textContent = titles[view] || 'Round Table';
   closeModal();
   viewEl.classList.remove('has-action-bar'); // only renderPlayers/renderDecks opt back in
