@@ -15,9 +15,10 @@ function setActiveNav(view) {
 
 function navigate(view) {
   setActiveNav(view);
-  const titles = { home: 'Home', players: 'Players', decks: 'Decks', stats: 'Stats', log: 'Log a Game' };
+  const titles = { home: 'Home', players: 'Players', decks: 'Commanders', stats: 'Stats', log: 'Log a Game' };
   headerTitle.textContent = titles[view] || 'Round Table';
   closeModal();
+  viewEl.classList.remove('has-action-bar'); // only renderPlayers/renderDecks opt back in
   if (view === 'home') renderHome();
   else if (view === 'players') renderPlayers();
   else if (view === 'decks') renderDecks();
@@ -70,7 +71,7 @@ function renderHome() {
 
   const recent = games.slice(0, 6);
   viewEl.innerHTML = `
-    <img src="icons/logo-full.png" alt="The Tavern Ledger" style="display:block; width:180px; max-width:60%; margin:4px auto 18px;">
+    <img src="icons/logo-full.png" alt="The Tavern Ledger" style="display:block; width:260px; max-width:78%; margin:8px auto 22px;">
     <button class="btn btn-primary btn-block" id="log-game-btn" style="padding:17px; font-size:1.05rem; margin-bottom:20px;">
       + Log a Game
     </button>
@@ -138,9 +139,9 @@ function renderPlayers() {
   const games = db.getGames();
   const winRows = stats.winsByPerson(players, games);
 
+  viewEl.classList.add('has-action-bar');
   viewEl.innerHTML = `
-    <button class="btn btn-primary btn-block" id="add-player-btn" style="margin-bottom:16px;">+ Add Player</button>
-    ${players.length === 0 ? `<p>No players yet.</p>` : winRows.map((r) => `
+    ${players.length === 0 ? `<p>No players yet — use the button below to add one.</p>` : winRows.map((r) => `
       <div class="card list-row">
         <div style="display:flex; align-items:center; gap:12px; flex:1;">
           ${avatarHTML(r.name, 44)}
@@ -157,6 +158,9 @@ function renderPlayers() {
         </div>
       </div>
     `).join('')}
+    <div class="action-bar">
+      <button class="btn btn-primary" id="add-player-btn">+ Add Player</button>
+    </div>
   `;
   document.getElementById('add-player-btn').addEventListener('click', () => {
     openModal(`
@@ -176,18 +180,25 @@ function renderPlayers() {
   });
 }
 
-// ---------------- Decks ----------------
+// ---------------- Commanders ----------------
+// Internally these stay "decks" throughout the code (db.getDecks, addDeck,
+// the deck data model) since that's still an accurate name for the data
+// itself — a deck record. Only the user-facing label changed to "Commander",
+// since that's the more accurate word for what a person actually picks when
+// using this screen. Renaming every internal reference too would just be
+// churn/risk for a label-only change.
 function renderDecks() {
   const players = db.getPlayers();
   const decks = db.getDecks();
 
   if (players.length === 0) {
-    viewEl.innerHTML = `<div class="empty-state"><p>Add a player first, then give them a deck.</p></div>`;
+    viewEl.classList.remove('has-action-bar');
+    viewEl.innerHTML = `<div class="empty-state"><p>Add a player first, then give them a commander.</p></div>`;
     return;
   }
 
+  viewEl.classList.add('has-action-bar');
   viewEl.innerHTML = `
-    <button class="btn btn-primary btn-block" id="add-deck-btn" style="margin-bottom:16px;">+ Add Deck</button>
     ${players.map((p) => {
       const owned = decks.filter((d) => d.ownerId === p.id);
       if (owned.length === 0) return '';
@@ -202,7 +213,10 @@ function renderDecks() {
           </div>
         `).join('')}
       `;
-    }).join('') || '<p>No decks yet.</p>'}
+    }).join('') || '<p>No commanders yet — use the button below to add one.</p>'}
+    <div class="action-bar">
+      <button class="btn btn-primary" id="add-deck-btn">+ Add Commander</button>
+    </div>
   `;
   document.getElementById('add-deck-btn').addEventListener('click', () => openAddDeckModal());
 }
@@ -212,14 +226,14 @@ function openAddDeckModal(ownerId, onSaved, preselected) {
   const chosenCommander = preselected || null;
 
   openModal(`
-    <h2>Add Deck</h2>
+    <h2>Add Commander</h2>
     <label for="deck-owner">Piloted by</label>
     <select id="deck-owner">
       ${players.map((p) => `<option value="${p.id}" ${p.id === ownerId ? 'selected' : ''}>${p.name}</option>`).join('')}
     </select>
     <label>Commander</label>
     <div id="deck-commander-slot"></div>
-    <button class="btn btn-primary btn-block" id="save-deck" style="margin-top:10px;">Save Deck</button>
+    <button class="btn btn-primary btn-block" id="save-deck" style="margin-top:10px;">Save Commander</button>
   `, () => {
     const slot = document.getElementById('deck-commander-slot');
     const saveBtn = document.getElementById('save-deck');
@@ -477,12 +491,12 @@ function handleSeatPlayerChange(value, seatIndex) {
 function showDeckStepForPlayer(player, seatIndex) {
   const decks = db.getDecks().filter((d) => d.ownerId === player.id);
   openModal(`
-    <h2>${player.name}'s deck</h2>
+    <h2>${player.name}'s commander</h2>
     <label for="seat-deck">Commander</label>
     <select id="seat-deck">
       <option value="">Choose…</option>
       ${decks.map((d) => `<option value="${d.id}">${d.commanderName}</option>`).join('')}
-      <option value="__new__">+ New deck</option>
+      <option value="__new__">+ New commander</option>
     </select>
   `, () => {
     document.getElementById('seat-deck').addEventListener('change', (e) => {

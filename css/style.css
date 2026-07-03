@@ -428,3 +428,19 @@ label {
   color: var(--ink-faint);
 }
 .empty-state .glyph { font-size: 2rem; display: block; margin-bottom: 10px; }
+
+/* ---- Persistent action bar ----
+   Same fixed-to-viewport idea as the nav below it: stays in place regardless
+   of scroll, so it's reachable no matter how long the list above it grows.
+   Only rendered on pages where it's relevant (Players, Commanders) — #view
+   gets the has-action-bar class toggled on those renders so the content
+   below reserves enough space to clear it. */
+.action-bar {
+  position: fixed;
+  left: 14px; right: 14px;
+  bottom: 90px; /* sits just above the floating bottom nav */
+  z-index: 15;
+}
+.action-bar .btn { width: 100%; }
+#view.has-action-bar { padding-bottom: 66px; }
+
