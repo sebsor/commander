@@ -7,7 +7,7 @@
 // one is for a human to glance at, that one is for the browser's cache), so
 // nothing keeps them in sync automatically. Bumping this is now part of the
 // same routine as bumping the cache version.
-const APP_VERSION = 'v37';
+const APP_VERSION = 'v38';
 
 const viewEl = document.getElementById('view');
 const headerTitle = document.getElementById('header-title');
@@ -40,6 +40,37 @@ navButtons.forEach((btn) => {
 });
 
 // ---------------- Modal helper ----------------
+// Fixed-body scroll lock — locks the page behind any open modal.
+// `overflow: hidden` on body is the obvious fix, but it's specifically
+// unreliable on iOS Safari: touch scroll can bypass it entirely, since it
+// only hides the scrollbar rather than making the page un-scrollable. Pinning
+// body with position:fixed physically removes it from anything scrollable,
+// which is why this is the technique that actually holds on iOS. We record
+// the exact scroll position first and restore it on unlock, since a fixed
+// body always visually resets to the top otherwise.
+let savedScrollY = 0;
+let scrollLocked = false;
+
+function lockBodyScroll() {
+  if (scrollLocked) return; // a chained modal (one replacing another) — already locked, don't re-capture
+  savedScrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${savedScrollY}px`;
+  document.body.style.left = '0';
+  document.body.style.right = '0';
+  scrollLocked = true;
+}
+
+function unlockBodyScroll() {
+  if (!scrollLocked) return;
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.left = '';
+  document.body.style.right = '';
+  window.scrollTo(0, savedScrollY);
+  scrollLocked = false;
+}
+
 function openModal(innerHTML, onMount) {
   modalRoot.innerHTML = `
     <div class="modal-backdrop" id="modal-backdrop">
@@ -54,11 +85,13 @@ function openModal(innerHTML, onMount) {
   document.getElementById('modal-backdrop').addEventListener('click', (e) => {
     if (e.target.id === 'modal-backdrop') closeModal();
   });
+  lockBodyScroll();
   adjustModalForViewport();
   if (onMount) onMount();
 }
 function closeModal() {
   modalRoot.innerHTML = '';
+  unlockBodyScroll();
 }
 
 // Mobile keyboards shrink the *visual* viewport (what's actually on screen)
