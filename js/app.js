@@ -343,18 +343,6 @@ function renderStats() {
       </div>
     </div>
 
-    <h2>Individual colors</h2>
-    <div class="card">
-      ${colorAll.length ? colorAll.map((r) => colorBarRow(r, maxColorPlayed)).join('') : '<p>No color data yet.</p>'}
-    </div>
-
-    <h2>Colors by player</h2>
-    <label for="color-player-select">Player</label>
-    <select id="color-player-select">
-      ${players.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}
-    </select>
-    <div class="card" id="color-by-player-card"></div>
-
     <h2>Color combinations — everyone</h2>
     <div class="card">
       ${comboAll.length ? comboAll.map((r) => comboBarRow(r, maxComboPlayed)).join('') : '<p>No color data yet.</p>'}
@@ -366,6 +354,18 @@ function renderStats() {
       ${players.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}
     </select>
     <div class="card" id="combo-by-player-card"></div>
+
+    <h2>Individual colors</h2>
+    <div class="card">
+      ${colorAll.length ? colorAll.map((r) => colorBarRow(r, maxColorPlayed)).join('') : '<p>No color data yet.</p>'}
+    </div>
+
+    <h2>Colors by player</h2>
+    <label for="color-player-select">Player</label>
+    <select id="color-player-select">
+      ${players.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}
+    </select>
+    <div class="card" id="color-by-player-card"></div>
   `;
 
   const colorPlayerSelect = document.getElementById('color-player-select');
