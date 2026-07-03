@@ -292,8 +292,21 @@ function showCommanderPreview(d) {
     openModal(`
       <h2>${d.commanderName}</h2>
       ${chipRow}
-      <img src="https://api.scryfall.com/cards/${d.scryfallId}?format=image&version=large" alt="${d.commanderName}" style="width:100%; border-radius:16px; display:block; box-shadow:var(--shadow-lg);">
-    `);
+      <div class="img-loading-wrap">
+        <span class="img-loading-text" id="card-preview-status">Loading image…</span>
+        <img id="card-preview-img" src="https://api.scryfall.com/cards/${d.scryfallId}?format=image&version=large" alt="${d.commanderName}">
+      </div>
+    `, () => {
+      const img = document.getElementById('card-preview-img');
+      const status = document.getElementById('card-preview-status');
+      img.addEventListener('load', () => {
+        img.classList.add('loaded');
+        status.style.display = 'none';
+      });
+      img.addEventListener('error', () => {
+        status.textContent = "Couldn't load the image.";
+      });
+    });
   } else if (d.imageUrl) {
     // Older decks (added back when manual entry existed, or a commander
     // Scryfall couldn't match) may only have the art crop stored, never a

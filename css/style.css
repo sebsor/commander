@@ -236,14 +236,23 @@ nav.bottom-nav button.active .icon { background: var(--accent-soft); color: var(
   box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow);
 }
 .seat-number {
-  font-size: 0.6rem;
-  font-weight: 700;
-  color: var(--ink-faint);
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #fff;
+  background: var(--accent);
   position: absolute;
-  top: 4px;
-  left: 6px;
+  top: -7px;
+  left: -7px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+  z-index: 2;
 }
-.table-seat--filled .seat-number { color: var(--ink-faint); }
+.table-seat--filled .seat-number { color: #fff; }
 .seat-chip {
   width: 20px; height: 20px;
   border-radius: 50%;
@@ -430,6 +439,42 @@ label {
   color: var(--ink-faint);
 }
 .empty-state .glyph { font-size: 2rem; display: block; margin-bottom: 10px; }
+
+/* ---- Card image preview loading state ----
+   Physical Magic cards are a fixed 2.5"x3.5" (5:7) ratio, and Scryfall's
+   renders always match it — so reserving that exact aspect ratio up front
+   means the box is already the right final size before the image has even
+   started downloading. No jump once it arrives, just a fade-in. */
+.img-loading-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--surface-alt);
+  box-shadow: var(--shadow-lg);
+}
+.img-loading-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.img-loading-wrap img.loaded { opacity: 1; }
+.img-loading-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-faint);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 20px;
+}
 
 /* ---- Persistent action bar ----
    Same fixed-to-viewport idea as the nav below it: stays in place regardless
