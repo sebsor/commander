@@ -7,7 +7,7 @@
 // one is for a human to glance at, that one is for the browser's cache), so
 // nothing keeps them in sync automatically. Bumping this is now part of the
 // same routine as bumping the cache version.
-const APP_VERSION = 'v35';
+const APP_VERSION = 'v36';
 
 const viewEl = document.getElementById('view');
 const headerTitle = document.getElementById('header-title');
@@ -627,9 +627,15 @@ function startLog() {
 }
 
 function renderLogPodSize() {
+  const lastGame = db.getGames()[0]; // getGames() already sorts newest-first
   viewEl.innerHTML = `
     <label for="log-date">Date</label>
     <input type="date" id="log-date" value="${logState.date}">
+    ${lastGame ? `
+      <button class="btn btn-block" id="repeat-last-pod" style="margin-top:10px;">
+        Repeat Last Pod (${lastGame.podSize} players)
+      </button>
+    ` : ''}
     <h2 style="margin-top:10px;">How many players?</h2>
     <div class="pill-group" id="pod-size-group">
       ${[2, 3, 4, 5, 6].map((n) => `<button class="pill" data-n="${n}">${n}</button>`).join('')}
@@ -643,6 +649,15 @@ function renderLogPodSize() {
       renderLogSeats();
     });
   });
+  if (lastGame) {
+    document.getElementById('repeat-last-pod').addEventListener('click', () => {
+      logState.podSize = lastGame.podSize;
+      // Clone, don't reference — this is a fresh game, and must never mutate
+      // the previous game's own saved record.
+      logState.seats = lastGame.seats.map((s) => ({ ...s }));
+      renderLogSeats();
+    });
+  }
 }
 
 function renderLogSeats() {
@@ -672,14 +687,17 @@ function renderLogSeats() {
 
 function openAssignSeatModal(seatIndex) {
   const players = db.getPlayers();
-  const takenIds = logState.seats.filter((s) => s.playerId).map((s) => s.playerId);
 
   openModal(`
     <h2>Seat ${seatIndex + 1}</h2>
     <label for="seat-player">Player</label>
     <select id="seat-player">
       <option value="">Choose…</option>
-      ${players.map((p) => `<option value="${p.id}" ${takenIds.includes(p.id) ? 'disabled' : ''}>${p.name}${takenIds.includes(p.id) ? ' (already seated)' : ''}</option>`).join('')}
+      ${players.map((p) => {
+        const otherSeatIndex = logState.seats.findIndex((s, i) => i !== seatIndex && s.playerId === p.id);
+        const suffix = otherSeatIndex !== -1 ? ` (seat ${otherSeatIndex + 1} — pick to swap)` : '';
+        return `<option value="${p.id}">${p.name}${suffix}</option>`;
+      }).join('')}
       <option value="__new__">+ New player</option>
     </select>
     <div id="deck-select-wrap"></div>
@@ -708,6 +726,20 @@ function handleSeatPlayerChange(value, seatIndex) {
   }
   if (!value) return;
   const player = db.getPlayers().find((p) => p.id === value);
+
+  // Already seated elsewhere this game (a swap) — they're still piloting
+  // whatever deck they were already assigned, so carry it straight over
+  // instead of asking again.
+  const existingSeat = logState.seats.find((s) => s.playerId === value);
+  if (existingSeat) {
+    assignSeat(seatIndex, player, {
+      id: existingSeat.deckId,
+      commanderName: existingSeat.commanderName,
+      colorIdentity: existingSeat.colorIdentity
+    });
+    return;
+  }
+
   showDeckStepForPlayer(player, seatIndex);
 }
 
@@ -735,7 +767,7 @@ function showDeckStepForPlayer(player, seatIndex) {
 }
 
 function assignSeat(seatIndex, player, deck) {
-  logState.seats[seatIndex] = {
+  const newEntry = {
     seat: seatIndex + 1,
     playerId: player.id,
     playerName: player.name,
@@ -743,6 +775,21 @@ function assignSeat(seatIndex, player, deck) {
     commanderName: deck.commanderName,
     colorIdentity: deck.colorIdentity
   };
+
+  // If this player is already sitting in a different seat, swap the two
+  // seats' contents instead of leaving them claimed by both. This matters
+  // most right after "Repeat Last Pod," which starts every seat pre-filled —
+  // reordering who sat where is then just "swap seat A and seat B," not
+  // "clear one seat, then fill it again."
+  const existingIndex = logState.seats.findIndex((s, i) => i !== seatIndex && s.playerId === player.id);
+  if (existingIndex !== -1) {
+    const previousOccupant = logState.seats[seatIndex]?.playerId ? { ...logState.seats[seatIndex] } : null;
+    logState.seats[existingIndex] = previousOccupant
+      ? { ...previousOccupant, seat: existingIndex + 1 }
+      : { seat: existingIndex + 1 };
+  }
+
+  logState.seats[seatIndex] = newEntry;
   closeModal();
   renderLogSeats();
 }
