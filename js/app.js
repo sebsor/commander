@@ -58,7 +58,8 @@ function renderHome() {
 
   if (players.length === 0) {
     viewEl.innerHTML = `
-      <div class="empty-state">
+      <img src="icons/logo-full.png" alt="The Tavern Ledger" style="display:block; width:260px; max-width:78%; margin:8px auto 0;">
+      <div class="empty-state" style="margin-top: 34px;">
         <span class="glyph">♜</span>
         <h2>Set the table</h2>
         <p>Add a player or two before logging your first game.</p>

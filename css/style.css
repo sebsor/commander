@@ -437,10 +437,15 @@ label {
    below reserves enough space to clear it. */
 .action-bar {
   position: fixed;
-  left: 14px; right: 14px;
-  bottom: 90px; /* sits just above the floating bottom nav */
+  left: 34px; right: 34px;
+  bottom: 88px; /* sits just above the floating bottom nav */
   z-index: 15;
 }
-.action-bar .btn { width: 100%; }
-#view.has-action-bar { padding-bottom: 66px; }
+.action-bar .btn {
+  width: 100%;
+  padding: 10px 16px;
+  font-size: 0.87rem;
+  box-shadow: var(--shadow);
+}
+#view.has-action-bar { padding-bottom: 60px; }
 
