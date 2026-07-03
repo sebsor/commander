@@ -38,6 +38,28 @@ const stats = {
       .sort((a, b) => b.played - a.played);
   },
 
+  // Groups by the *exact* color-identity combination (e.g. Jeskai as one
+  // bucket) rather than colorBreakdown's per-pip counting. Complements it:
+  // colorBreakdown answers "how much white have I played," this answers
+  // "how much Jeskai have I played" as its own distinct thing.
+  colorComboBreakdown(games, playerId) {
+    const map = new Map();
+    for (const g of games) {
+      for (const seat of g.seats) {
+        if (playerId && seat.playerId !== playerId) continue;
+        const identity = seat.colorIdentity || [];
+        const key = sortWubrg(identity).join('');
+        if (!map.has(key)) map.set(key, { key, colors: identity, played: 0, wins: 0 });
+        const row = map.get(key);
+        row.played += 1;
+        if (g.winnerId === seat.playerId) row.wins += 1;
+      }
+    }
+    return Array.from(map.values())
+      .map((r) => ({ ...r, label: comboLabel(r.colors), winRate: r.played ? r.wins / r.played : 0 }))
+      .sort((a, b) => b.played - a.played);
+  },
+
   // Win count + win rate per player
   winsByPerson(players, games) {
     const rows = players.map((p) => {

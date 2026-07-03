@@ -2,6 +2,34 @@
 // deterministic avatar colors/initials, and the rounded arc-gauge SVG that's
 // this redesign's signature element (used wherever a percentage is the point).
 
+// Color-identity combo naming (guilds/shards/wedges/etc). Verified against
+// current sources rather than assumed from memory — the 2-and-3-color names
+// (guilds, shards, wedges) are common knowledge, but the 4-color ones
+// (Dune/Glint/Ink/Witch/Yore, from the 2006 Nephilim cycle) are obscure
+// enough that guessing them wrong felt likely.
+const WUBRG_ORDER = ['W', 'U', 'B', 'R', 'G'];
+
+function sortWubrg(colors) {
+  return WUBRG_ORDER.filter((c) => colors.includes(c));
+}
+
+const COMBO_NAMES = {
+  '': 'Colorless',
+  W: 'Mono-White', U: 'Mono-Blue', B: 'Mono-Black', R: 'Mono-Red', G: 'Mono-Green',
+  WU: 'Azorius', WB: 'Orzhov', WR: 'Boros', WG: 'Selesnya',
+  UB: 'Dimir', UR: 'Izzet', UG: 'Simic',
+  BR: 'Rakdos', BG: 'Golgari', RG: 'Gruul',
+  WUB: 'Esper', WUR: 'Jeskai', WUG: 'Bant', WBR: 'Mardu', WBG: 'Abzan',
+  WRG: 'Naya', UBR: 'Grixis', UBG: 'Sultai', URG: 'Temur', BRG: 'Jund',
+  WBRG: 'Dune', UBRG: 'Glint', WURG: 'Ink', WUBG: 'Witch', WUBR: 'Yore',
+  WUBRG: 'Five-Color'
+};
+
+function comboLabel(colors) {
+  const key = sortWubrg(colors).join('');
+  return COMBO_NAMES[key] || key || 'Colorless';
+}
+
 const AVATAR_PALETTE = ['#ef7d3f', '#4f9d8f', '#c76b9a', '#5b8fd6', '#d6a24f', '#7f9e4a', '#a06bd6'];
 
 function avatarColorFor(name) {

@@ -308,10 +308,12 @@ function renderStats() {
   const mostPlayed = stats.mostPlayedCommanders(games, 5);
   const seatRates = stats.seatPositionWinRates(games);
   const colorAll = stats.colorBreakdown(games);
+  const comboAll = stats.colorComboBreakdown(games);
   const maxPersonWins = Math.max(1, ...byPerson.map((r) => r.wins));
   const maxCmdWins = Math.max(1, ...topCommanders.map((r) => r.wins));
   const maxPlayed = Math.max(1, ...mostPlayed.map((r) => r.played));
   const maxColorPlayed = Math.max(1, ...colorAll.map((r) => r.played));
+  const maxComboPlayed = Math.max(1, ...comboAll.map((r) => r.played));
 
   viewEl.innerHTML = `
     <h2>Wins by person</h2>
@@ -330,7 +332,6 @@ function renderStats() {
     </div>
 
     <h2>Win rate by table position</h2>
-    <p style="font-size:0.82rem;">Normalized so "last seat" means the same thing whether it was a 3-player or 6-player pod.</p>
     <div class="card">
       <div class="gauge-row">
         ${seatRates.map((r) => `
@@ -342,8 +343,7 @@ function renderStats() {
       </div>
     </div>
 
-    <h2>Colors — everyone</h2>
-    <p style="font-size:0.82rem;">Each color in a commander's identity counts separately, so a Jeskai deck adds to white, blue, and red.</p>
+    <h2>Individual colors</h2>
     <div class="card">
       ${colorAll.length ? colorAll.map((r) => colorBarRow(r, maxColorPlayed)).join('') : '<p>No color data yet.</p>'}
     </div>
@@ -354,6 +354,18 @@ function renderStats() {
       ${players.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}
     </select>
     <div class="card" id="color-by-player-card"></div>
+
+    <h2>Color combinations — everyone</h2>
+    <div class="card">
+      ${comboAll.length ? comboAll.map((r) => comboBarRow(r, maxComboPlayed)).join('') : '<p>No color data yet.</p>'}
+    </div>
+
+    <h2>Color combinations by player</h2>
+    <label for="combo-player-select">Player</label>
+    <select id="combo-player-select">
+      ${players.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}
+    </select>
+    <div class="card" id="combo-by-player-card"></div>
   `;
 
   const colorPlayerSelect = document.getElementById('color-player-select');
@@ -366,6 +378,17 @@ function renderStats() {
   }
   colorPlayerSelect.addEventListener('change', renderColorByPlayer);
   renderColorByPlayer();
+
+  const comboPlayerSelect = document.getElementById('combo-player-select');
+  function renderComboByPlayer() {
+    const rows = stats.colorComboBreakdown(games, comboPlayerSelect.value);
+    const max = Math.max(1, ...rows.map((r) => r.played));
+    document.getElementById('combo-by-player-card').innerHTML = rows.length
+      ? rows.map((r) => comboBarRow(r, max)).join('')
+      : '<p>No games logged for this player yet.</p>';
+  }
+  comboPlayerSelect.addEventListener('change', renderComboByPlayer);
+  renderComboByPlayer();
 }
 
 function seatLabel(l) {
@@ -394,6 +417,23 @@ function colorBarRow(row, max) {
         <span class="numeric" style="color:var(--ink-faint);">${row.played} played · ${row.wins} won (${Math.round(row.winRate * 100)}%)</span>
       </div>
       <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${pct}%; background:${fill};"></div></div>
+    </div>
+  `;
+}
+
+function comboBarRow(row, max) {
+  const pct = Math.round((row.played / max) * 100);
+  const chips = colorIdentityHex(row.colors);
+  return `
+    <div class="stat-bar-row">
+      <div class="stat-bar-label">
+        <span style="display:flex; align-items:center; gap:8px;">
+          <span class="color-chip-row">${chips.map((c) => `<span style="background:${c}"></span>`).join('')}</span>
+          ${row.label}
+        </span>
+        <span class="numeric" style="color:var(--ink-faint);">${row.played} played · ${row.wins} won (${Math.round(row.winRate * 100)}%)</span>
+      </div>
+      <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${pct}%;"></div></div>
     </div>
   `;
 }
