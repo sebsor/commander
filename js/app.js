@@ -70,6 +70,7 @@ function renderHome() {
 
   const recent = games.slice(0, 6);
   viewEl.innerHTML = `
+    <img src="icons/logo-full.png" alt="The Tavern Ledger" style="display:block; width:180px; max-width:60%; margin:4px auto 18px;">
     <button class="btn btn-primary btn-block" id="log-game-btn" style="padding:17px; font-size:1.05rem; margin-bottom:20px;">
       + Log a Game
     </button>

@@ -61,16 +61,21 @@ button { font-family: var(--font-body); cursor: pointer; }
 .numeric { font-variant-numeric: tabular-nums; font-weight: 600; }
 
 header.app-header {
-  padding: 22px 20px 8px;
+  padding: 18px 20px 8px;
   background: var(--bg);
 }
-header.app-header .eyebrow {
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--accent-dark);
-  margin-bottom: 2px;
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: var(--shadow);
+  flex-shrink: 0;
 }
 
 main {

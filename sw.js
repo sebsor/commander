@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tavern-ledger-v6';
+const CACHE_NAME = 'tavern-ledger-v7';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -12,7 +12,9 @@ const CORE_ASSETS = [
   './js/commander-picker.js',
   './js/app.js',
   './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
+  './icons/icon-mark.png',
+  './icons/logo-full.png'
 ];
 
 self.addEventListener('install', (event) => {
