@@ -1,7 +1,7 @@
 :root {
   /* Parchment = where content lives (pages, cards, lists) */
-  --parchment: #efe1c3;
-  --parchment-deep: #e2cea3;   /* secondary surface: input fields, track fills, alt rows */
+  --parchment: #ff00d4;
+  --parchment-deep: #ff5cf0;
   --ink: #3b2a1a;
   --ink-dim: #6e5a41;
   --ink-faint: #9a8567;
