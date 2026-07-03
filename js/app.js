@@ -2,8 +2,16 @@
 // plain DOM manipulation stays readable, and it keeps the single-file-per-
 // concern structure (db / scryfall / table / stats / app) easy to follow.
 
+// Must be bumped alongside sw.js's CACHE_NAME on every change — they're two
+// separate constants in two separate files for two different audiences (this
+// one is for a human to glance at, that one is for the browser's cache), so
+// nothing keeps them in sync automatically. Bumping this is now part of the
+// same routine as bumping the cache version.
+const APP_VERSION = 'v31';
+
 const viewEl = document.getElementById('view');
 const headerTitle = document.getElementById('header-title');
+const headerVersion = document.getElementById('header-version');
 const modalRoot = document.getElementById('modal-root');
 const navButtons = document.querySelectorAll('.bottom-nav button');
 
@@ -17,6 +25,7 @@ function navigate(view) {
   setActiveNav(view);
   const titles = { home: '', players: 'Players', decks: 'Commanders', stats: 'Stats', log: 'Log a Game' };
   headerTitle.textContent = titles[view] ?? 'Round Table';
+  headerVersion.textContent = view === 'home' ? APP_VERSION : '';
   closeModal();
   viewEl.classList.remove('has-action-bar'); // only renderPlayers/renderDecks opt back in
   if (view === 'home') renderHome();

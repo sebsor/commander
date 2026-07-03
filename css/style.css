@@ -64,6 +64,17 @@ button { font-family: var(--font-body); cursor: pointer; }
 header.app-header {
   padding: 18px 20px 8px;
   background: var(--bg);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.header-version {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  padding-top: 4px;
+  flex-shrink: 0;
 }
 .header-brand {
   display: flex;
