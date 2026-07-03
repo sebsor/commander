@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tavern-ledger-v1';
+const CACHE_NAME = 'tavern-ledger-v2';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -8,6 +8,7 @@ const CORE_ASSETS = [
   './js/scryfall.js',
   './js/table.js',
   './js/stats.js',
+  './js/commander-picker.js',
   './js/app.js',
   './icons/icon-192.png',
   './icons/icon-512.png'

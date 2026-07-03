@@ -3,6 +3,41 @@
 // so it stays testable and reusable if the storage backend ever changes.
 
 const stats = {
+  COLOR_ORDER: ['W', 'U', 'B', 'R', 'G', 'C'],
+  COLOR_LABELS: { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green', C: 'Colorless' },
+
+  // How often each color has been piloted / won with. A multicolor commander
+  // (say, Jeskai) counts toward W, U, *and* R — that's the standard way MTG
+  // sites break down "color stats," since a single combined-identity count
+  // wouldn't tell you much about your actual color preferences across decks.
+  // Pass a playerId to scope this to one player; omit it for the whole group.
+  colorBreakdown(games, playerId) {
+    const buckets = {};
+    this.COLOR_ORDER.forEach((c) => { buckets[c] = { color: c, played: 0, wins: 0 }; });
+
+    for (const g of games) {
+      for (const seat of g.seats) {
+        if (playerId && seat.playerId !== playerId) continue;
+        const identity = seat.colorIdentity && seat.colorIdentity.length ? seat.colorIdentity : ['C'];
+        const isWin = g.winnerId === seat.playerId;
+        identity.forEach((c) => {
+          if (!buckets[c]) return;
+          buckets[c].played += 1;
+          if (isWin) buckets[c].wins += 1;
+        });
+      }
+    }
+
+    return this.COLOR_ORDER
+      .map((c) => ({
+        ...buckets[c],
+        label: this.COLOR_LABELS[c],
+        winRate: buckets[c].played ? buckets[c].wins / buckets[c].played : 0
+      }))
+      .filter((r) => r.played > 0)
+      .sort((a, b) => b.played - a.played);
+  },
+
   // Win count + win rate per player
   winsByPerson(players, games) {
     const rows = players.map((p) => {

@@ -204,49 +204,69 @@ function renderDecks() {
   document.getElementById('add-deck-btn').addEventListener('click', () => openAddDeckModal());
 }
 
-function openAddDeckModal(ownerId, onSaved) {
+function openAddDeckModal(ownerId, onSaved, preselected) {
   const players = db.getPlayers();
+  const chosenCommander = preselected || null;
+
   openModal(`
     <h2>Add Deck</h2>
     <label for="deck-owner">Piloted by</label>
     <select id="deck-owner">
       ${players.map((p) => `<option value="${p.id}" ${p.id === ownerId ? 'selected' : ''}>${p.name}</option>`).join('')}
     </select>
-    <label for="deck-commander">Commander</label>
-    <input type="text" id="deck-commander" placeholder="e.g. Zur the Enchanter">
-    <div id="deck-preview" style="margin:10px 0;"></div>
-    <button class="btn btn-primary btn-block" id="save-deck">Save Deck</button>
+    <label>Commander</label>
+    <div id="deck-commander-slot"></div>
+    <button class="btn btn-primary btn-block" id="save-deck" style="margin-top:10px;">Save Deck</button>
   `, () => {
-    let fetched = null;
-    const nameInput = document.getElementById('deck-commander');
-    const preview = document.getElementById('deck-preview');
+    const slot = document.getElementById('deck-commander-slot');
+    const saveBtn = document.getElementById('save-deck');
 
-    nameInput.addEventListener('blur', async () => {
-      const name = nameInput.value.trim();
-      if (!name) return;
-      preview.innerHTML = `<p style="color:var(--text-faint);">Looking up on Scryfall…</p>`;
-      fetched = await scryfall.findCommander(name);
-      if (fetched) {
-        nameInput.value = fetched.name;
-        preview.innerHTML = `
-          <div class="color-chip-row">${colorIdentityHex(fetched.colorIdentity).map((c) => `<span style="background:${c}"></span>`).join('')}</div>
-          <p style="margin-top:6px;">Found on Scryfall — colors filled in automatically.</p>
-        `;
+    function renderSlot() {
+      if (!chosenCommander) {
+        slot.innerHTML = `<button class="btn btn-block" id="choose-commander-btn">Choose Commander…</button>`;
+        document.getElementById('choose-commander-btn').addEventListener('click', launchPicker);
+        saveBtn.disabled = true;
+        saveBtn.style.opacity = 0.4;
       } else {
-        preview.innerHTML = `<p style="color:var(--text-faint);">Couldn't find that on Scryfall — it'll be saved without color identity. You can still log games with it.</p>`;
+        slot.innerHTML = `
+          <div class="card" style="display:flex; align-items:center; gap:12px; margin-top:4px;">
+            ${chosenCommander.imageUrl ? `<img src="${chosenCommander.imageUrl}" alt="" style="width:56px; height:56px; object-fit:cover; border-radius:6px; flex-shrink:0;">` : ''}
+            <div style="flex:1; min-width:0;">
+              <div style="font-weight:500;">${chosenCommander.name}</div>
+              <div class="color-chip-row" style="margin-top:4px;">${colorIdentityHex(chosenCommander.colorIdentity).map((c) => `<span style="background:${c}"></span>`).join('')}</div>
+            </div>
+            <button class="btn btn-ghost" id="change-commander-btn">Change</button>
+          </div>
+        `;
+        document.getElementById('change-commander-btn').addEventListener('click', launchPicker);
+        saveBtn.disabled = false;
+        saveBtn.style.opacity = 1;
       }
-    });
+    }
 
-    document.getElementById('save-deck').addEventListener('click', () => {
-      const name = nameInput.value.trim();
-      if (!name) return;
+    // The picker opens its own modal, which replaces this one in modal-root
+    // (there's only ever one modal on screen). So instead of trying to keep
+    // this Add Deck modal alive underneath it, we close over the current
+    // owner selection and simply re-open Add Deck fresh once a commander
+    // comes back — same pattern as the seat-assignment flow uses.
+    function launchPicker() {
+      const currentOwner = document.getElementById('deck-owner').value;
+      openCommanderPicker((commander) => {
+        openAddDeckModal(currentOwner, onSaved, commander);
+      });
+    }
+
+    renderSlot();
+
+    saveBtn.addEventListener('click', () => {
+      if (!chosenCommander) return;
       const owner = document.getElementById('deck-owner').value;
       const deck = db.addDeck({
         ownerId: owner,
-        commanderName: fetched?.name || name,
-        colorIdentity: fetched?.colorIdentity || [],
-        imageUrl: fetched?.imageUrl || null,
-        scryfallId: fetched?.scryfallId || null
+        commanderName: chosenCommander.name,
+        colorIdentity: chosenCommander.colorIdentity || [],
+        imageUrl: chosenCommander.imageUrl || null,
+        scryfallId: chosenCommander.scryfallId || null
       });
       closeModal();
       if (onSaved) onSaved(deck);
@@ -269,9 +289,11 @@ function renderStats() {
   const topCommanders = stats.winsByCommanderRanked(games, 5);
   const mostPlayed = stats.mostPlayedCommanders(games, 5);
   const seatRates = stats.seatPositionWinRates(games);
+  const colorAll = stats.colorBreakdown(games);
   const maxPersonWins = Math.max(1, ...byPerson.map((r) => r.wins));
   const maxCmdWins = Math.max(1, ...topCommanders.map((r) => r.wins));
   const maxPlayed = Math.max(1, ...mostPlayed.map((r) => r.played));
+  const maxColorPlayed = Math.max(1, ...colorAll.map((r) => r.played));
 
   viewEl.innerHTML = `
     <h2>Wins by person</h2>
@@ -294,7 +316,31 @@ function renderStats() {
     <div class="card">
       ${seatRates.map((r) => barRow(seatLabel(r.label), r.wins, Math.max(1, ...seatRates.map(x => x.played)), `${Math.round(r.winRate * 100)}% (${r.wins}/${r.played})`)).join('')}
     </div>
+
+    <h2>Colors — everyone</h2>
+    <p style="font-size:0.82rem;">Each color in a commander's identity counts separately, so a Jeskai deck adds to white, blue, and red.</p>
+    <div class="card">
+      ${colorAll.length ? colorAll.map((r) => colorBarRow(r, maxColorPlayed)).join('') : '<p>No color data yet.</p>'}
+    </div>
+
+    <h2>Colors by player</h2>
+    <label for="color-player-select">Player</label>
+    <select id="color-player-select">
+      ${players.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}
+    </select>
+    <div class="card" id="color-by-player-card"></div>
   `;
+
+  const colorPlayerSelect = document.getElementById('color-player-select');
+  function renderColorByPlayer() {
+    const rows = stats.colorBreakdown(games, colorPlayerSelect.value);
+    const max = Math.max(1, ...rows.map((r) => r.played));
+    document.getElementById('color-by-player-card').innerHTML = rows.length
+      ? rows.map((r) => colorBarRow(r, max)).join('')
+      : '<p>No games logged for this player yet.</p>';
+  }
+  colorPlayerSelect.addEventListener('change', renderColorByPlayer);
+  renderColorByPlayer();
 }
 
 function seatLabel(l) {
@@ -306,6 +352,19 @@ function barRow(label, value, max, rightText) {
   return `
     <div class="stat-bar-row">
       <div class="stat-bar-label"><span>${label}</span><span class="numeric" style="color:var(--text-faint);">${rightText}</span></div>
+      <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${pct}%"></div></div>
+    </div>
+  `;
+}
+
+function colorBarRow(row, max) {
+  const pct = Math.round((row.played / max) * 100);
+  return `
+    <div class="stat-bar-row">
+      <div class="stat-bar-label">
+        <span style="display:flex; align-items:center; gap:6px;"><img src="${manaSymbolUrl(row.color)}" alt="" style="width:15px; height:15px;">${row.label}</span>
+        <span class="numeric" style="color:var(--text-faint);">${row.played} played · ${row.wins} won (${Math.round(row.winRate * 100)}%)</span>
+      </div>
       <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${pct}%"></div></div>
     </div>
   `;

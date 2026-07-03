@@ -15,15 +15,7 @@ const scryfall = {
       );
       if (!res.ok) return null;
       const card = await res.json();
-      return {
-        name: card.name,
-        colorIdentity: card.color_identity || [],
-        imageUrl:
-          card.image_uris?.art_crop ||
-          card.card_faces?.[0]?.image_uris?.art_crop ||
-          null,
-        scryfallId: card.id
-      };
+      return cardToCommanderSummary(card);
     } catch (e) {
       console.warn('Scryfall lookup failed, falling back to manual entry', e);
       return null;
@@ -43,8 +35,56 @@ const scryfall = {
     } catch (e) {
       return [];
     }
+  },
+
+  // Search legal commanders by (optional) name substring and (optional)
+  // exact color identity. Returns:
+  //   [] on a clean zero-result search (nothing matched)
+  //   null on a network/API failure (so callers can tell "no matches" from "couldn't ask")
+  async searchCommanders({ name = '', colors = [] } = {}) {
+    let query = 'is:commander';
+    const trimmedName = name.trim();
+    if (trimmedName) {
+      // name: restricts matching to the card name field (not oracle text),
+      // so typing "zur" doesn't surface unrelated cards that merely mention Zur.
+      query += ` name:"${trimmedName.replace(/"/g, '')}"`;
+    }
+    if (colors.length > 0) {
+      // id= is an exact color-identity match (see note above) — colors.length
+      // covers the "colorless" case too, since the caller passes ['C'] for that.
+      const identity = colors.includes('C') ? 'c' : colors.join('').toLowerCase();
+      query += ` id=${identity}`;
+    }
+    try {
+      const url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}&order=name&unique=cards`;
+      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (res.status === 404) return []; // Scryfall's way of saying "zero matches"
+      if (!res.ok) return null;
+      const data = await res.json();
+      return (data.data || []).map(cardToCommanderSummary);
+    } catch (e) {
+      console.warn('Commander search failed', e);
+      return null;
+    }
   }
 };
+
+function cardToCommanderSummary(card) {
+  const face = card.card_faces?.[0];
+  return {
+    name: card.name,
+    colorIdentity: card.color_identity || [],
+    thumbUrl: card.image_uris?.small || face?.image_uris?.small || null,
+    artUrl: card.image_uris?.art_crop || face?.image_uris?.art_crop || null,
+    scryfallId: card.id
+  };
+}
+
+// Individual mana symbol SVGs live at a predictable, stable Scryfall CDN
+// path — no API call needed to fetch these, unlike card data.
+function manaSymbolUrl(letter) {
+  return `https://img.scryfall.com/symbology/${letter.toUpperCase()}.svg`;
+}
 
 // Color identity → display info, used for deck chips throughout the app
 const MANA_COLORS = {

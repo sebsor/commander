@@ -259,6 +259,72 @@ label {
 }
 .pill.selected { border-color: var(--accent); color: var(--accent); background: rgba(176,138,78,0.1); }
 
+/* ---- Commander picker ---- */
+.color-pill {
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  border-radius: 999px;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+}
+.color-pill img { width: 20px; height: 20px; display: block; }
+.color-pill.selected { border-color: var(--accent); background: rgba(176,138,78,0.15); }
+
+.commander-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  max-height: 46vh;
+  overflow-y: auto;
+  margin-top: 4px;
+  padding-top: 2px;
+}
+.cmd-hint {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--text-faint);
+  padding: 20px 8px;
+}
+.commander-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+.commander-card img {
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.commander-card-noimg {
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  padding: 6px;
+}
+.commander-card-name {
+  font-size: 0.68rem;
+  line-height: 1.15;
+  color: var(--text-dim);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
 /* ---- Modal ---- */
 .modal-backdrop {
   position: fixed; inset: 0;
