@@ -7,7 +7,7 @@
 // one is for a human to glance at, that one is for the browser's cache), so
 // nothing keeps them in sync automatically. Bumping this is now part of the
 // same routine as bumping the cache version.
-const APP_VERSION = 'v36';
+const APP_VERSION = 'v37';
 
 const viewEl = document.getElementById('view');
 const headerTitle = document.getElementById('header-title');
@@ -184,12 +184,12 @@ function renderPlayers() {
           <div style="flex:1;">
             <div style="font-weight:700;">${r.name}</div>
             <div class="stat-bar-track" style="margin-top:6px;">
-              <div class="stat-bar-fill" style="width:${Math.round(r.winRate * 100)}%; background:${rateColor(r.winRate)};"></div>
+              <div class="stat-bar-fill" style="width:${Math.round(r.winRate * 100)}%; background:${rateColor(r.winRate)}; opacity:${sampleSizeOpacity(r.played)};"></div>
             </div>
           </div>
         </div>
         <div style="text-align:right; margin-left:10px;">
-          <div class="numeric">${Math.round(r.winRate * 100)}%</div>
+          <div class="numeric" style="opacity:${sampleSizeOpacity(r.played)};">${Math.round(r.winRate * 100)}%</div>
           <div style="font-size:0.68rem; color:var(--ink-faint);">${r.wins}/${r.played}</div>
         </div>
       </div>
@@ -276,7 +276,7 @@ function renderDecks() {
               <div style="font-weight:600;">${d.commanderName}</div>
             </div>
             <div style="text-align:right;">
-              <div class="numeric" style="color:${s.played ? rateColor(s.winRate) : 'var(--ink-faint)'};">${s.played ? Math.round(s.winRate * 100) + '%' : '—'}</div>
+              <div class="numeric" style="color:${s.played ? rateColor(s.winRate) : 'var(--ink-faint)'}; opacity:${sampleSizeOpacity(s.played)};">${s.played ? Math.round(s.winRate * 100) + '%' : '—'}</div>
               <div style="font-size:0.68rem; color:var(--ink-faint);">${s.wins}/${s.played}</div>
             </div>
           </div>
@@ -541,7 +541,7 @@ function showPlayerDetailModal(playerId, playerName) {
           <div style="font-weight:600;">${d.commanderName}</div>
         </div>
         <div style="text-align:right;">
-          <div class="numeric" style="color:${s.played ? rateColor(s.winRate) : 'var(--ink-faint)'};">${s.played ? Math.round(s.winRate * 100) + '%' : '—'}</div>
+          <div class="numeric" style="color:${s.played ? rateColor(s.winRate) : 'var(--ink-faint)'}; opacity:${sampleSizeOpacity(s.played)};">${s.played ? Math.round(s.winRate * 100) + '%' : '—'}</div>
           <div style="font-size:0.68rem; color:var(--ink-faint);">${s.wins}/${s.played}</div>
         </div>
       </div>

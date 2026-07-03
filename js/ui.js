@@ -82,3 +82,12 @@ function rateColor(fraction) {
   if (fraction >= 0.35) return 'var(--rate-mid)';
   return 'var(--rate-low)';
 }
+
+// Muted opacity for win-rate percentages backed by very few games — a lone
+// win reading "100%" shouldn't carry the same visual confidence as a rate
+// backed by a real sample. Purely a display cue; the underlying win rate
+// math is completely unchanged, this only affects how it's rendered.
+const LOW_SAMPLE_THRESHOLD = 3;
+function sampleSizeOpacity(played) {
+  return played > 0 && played < LOW_SAMPLE_THRESHOLD ? '0.55' : '1';
+}
