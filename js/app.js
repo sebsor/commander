@@ -45,10 +45,35 @@ function openModal(innerHTML, onMount) {
   document.getElementById('modal-backdrop').addEventListener('click', (e) => {
     if (e.target.id === 'modal-backdrop') closeModal();
   });
+  adjustModalForViewport();
   if (onMount) onMount();
 }
 function closeModal() {
   modalRoot.innerHTML = '';
+}
+
+// Mobile keyboards shrink the *visual* viewport (what's actually on screen)
+// without shrinking the *layout* viewport that `position: fixed` elements
+// are normally anchored to — so a fixed modal backdrop doesn't "know" the
+// keyboard opened and stays sized to the full page, letting the keyboard
+// cover whatever's near the bottom of the sheet (exactly where a text input
+// usually sits). The VisualViewport API's resize/scroll events fire
+// specifically when the keyboard opens, closes, or the page pans, so we use
+// those to keep the backdrop's own height/position matched to what's
+// genuinely visible. Since the sheet is bottom-aligned inside the backdrop
+// (align-items: flex-end in CSS), shrinking the backdrop to the visible
+// area naturally pulls the sheet up above the keyboard instead of letting
+// it sit off-screen underneath it.
+function adjustModalForViewport() {
+  const backdrop = document.getElementById('modal-backdrop');
+  if (!backdrop || !window.visualViewport) return;
+  const vv = window.visualViewport;
+  backdrop.style.height = vv.height + 'px';
+  backdrop.style.top = vv.offsetTop + 'px';
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', adjustModalForViewport);
+  window.visualViewport.addEventListener('scroll', adjustModalForViewport);
 }
 
 // ---------------- Home ----------------
@@ -71,13 +96,14 @@ function renderHome() {
   }
 
   const recent = games.slice(0, 6);
+  viewEl.classList.add('has-action-bar');
   viewEl.innerHTML = `
     <img src="icons/logo-full.png" alt="The Tavern Ledger" style="display:block; width:260px; max-width:78%; margin:8px auto 22px;">
-    <button class="btn btn-primary btn-block" id="log-game-btn" style="padding:17px; font-size:1.05rem; margin-bottom:20px;">
-      + Log a Game
-    </button>
     <h2>Recent games</h2>
     ${recent.length === 0 ? `<p>No games logged yet.</p>` : recent.map(gameRowHTML).join('')}
+    <div class="action-bar">
+      <button class="btn btn-primary" id="log-game-btn">+ Log a Game</button>
+    </div>
   `;
   document.getElementById('log-game-btn').addEventListener('click', () => navigate('log'));
   recent.forEach((g) => {
@@ -143,7 +169,7 @@ function renderPlayers() {
   viewEl.classList.add('has-action-bar');
   viewEl.innerHTML = `
     ${players.length === 0 ? `<p>No players yet — use the button below to add one.</p>` : winRows.map((r) => `
-      <div class="card list-row">
+      <div class="card list-row" id="player-${r.playerId}" style="cursor:pointer;">
         <div style="display:flex; align-items:center; gap:12px; flex:1;">
           ${avatarHTML(r.name, 44)}
           <div style="flex:1;">
@@ -179,6 +205,32 @@ function renderPlayers() {
       });
     });
   });
+  winRows.forEach((r) => {
+    const el = document.getElementById('player-' + r.playerId);
+    if (el) el.addEventListener('click', () => openEditPlayerModal(r.playerId, r.name));
+  });
+}
+
+// Only the name is editable here — id and createdAt are left untouched by
+// db.updatePlayer's Object.assign merge, since we only ever pass {name: ...}.
+// Stats aren't stored on the player at all (winsByPerson computes them fresh
+// from games/seats every render, looked up by id), so renaming can't corrupt
+// or orphan anything win/loss-related — there's no derived data to go stale.
+function openEditPlayerModal(playerId, currentName) {
+  openModal(`
+    <h2>Edit Player</h2>
+    <label for="edit-player-name">Name</label>
+    <input type="text" id="edit-player-name" value="${currentName}" autofocus>
+    <button class="btn btn-primary btn-block" id="save-edit-player">Save</button>
+  `, () => {
+    document.getElementById('save-edit-player').addEventListener('click', () => {
+      const name = document.getElementById('edit-player-name').value.trim();
+      if (!name) return;
+      db.updatePlayer(playerId, { name });
+      closeModal();
+      renderPlayers();
+    });
+  });
 }
 
 // ---------------- Commanders ----------------
@@ -206,7 +258,7 @@ function renderDecks() {
       return `
         <h3 style="margin-top:16px;">${p.name}</h3>
         ${owned.map((d) => `
-          <div class="card list-row">
+          <div class="card list-row" id="deck-${d.id}" style="cursor:pointer;">
             <div style="display:flex; align-items:center; gap:12px;">
               <div class="color-chip-row">${colorIdentityHex(d.colorIdentity).map((c) => `<span style="background:${c}"></span>`).join('')}</div>
               <div style="font-weight:600;">${d.commanderName}</div>
@@ -220,6 +272,47 @@ function renderDecks() {
     </div>
   `;
   document.getElementById('add-deck-btn').addEventListener('click', () => openAddDeckModal());
+  decks.forEach((d) => {
+    const el = document.getElementById('deck-' + d.id);
+    if (el) el.addEventListener('click', () => showCommanderPreview(d));
+  });
+}
+
+// Scryfall's /cards/:id endpoint, given format=image, responds with an HTTP
+// redirect straight to the image file — so this URL can go directly into an
+// <img src> with no separate fetch/JSON step needed. "version=large" gets
+// the full card face, not just the cropped artwork we store as imageUrl
+// (that field only holds art_crop, meant for small accent use elsewhere —
+// it was never meant to stand in for the whole card in a big preview).
+function showCommanderPreview(d) {
+  const chips = colorIdentityHex(d.colorIdentity);
+  const chipRow = `<div class="color-chip-row" style="margin-bottom:10px;">${chips.map((c) => `<span style="background:${c}"></span>`).join('')}</div>`;
+
+  if (d.scryfallId) {
+    openModal(`
+      <h2>${d.commanderName}</h2>
+      ${chipRow}
+      <img src="https://api.scryfall.com/cards/${d.scryfallId}?format=image&version=large" alt="${d.commanderName}" style="width:100%; border-radius:16px; display:block; box-shadow:var(--shadow-lg);">
+    `);
+  } else if (d.imageUrl) {
+    // Older decks (added back when manual entry existed, or a commander
+    // Scryfall couldn't match) may only have the art crop stored, never a
+    // scryfallId — so this is a genuinely different, lower-quality fallback,
+    // not a silent substitute. Said so explicitly rather than passing a
+    // cropped illustration off as the full card.
+    openModal(`
+      <h2>${d.commanderName}</h2>
+      ${chipRow}
+      <img src="${d.imageUrl}" alt="${d.commanderName}" style="width:100%; border-radius:16px; display:block; box-shadow:var(--shadow-lg);">
+      <p style="font-size:0.8rem; margin-top:10px;">Only the artwork is available for this commander, not the full card — it was added before Scryfall matching was required.</p>
+    `);
+  } else {
+    openModal(`
+      <h2>${d.commanderName}</h2>
+      ${chipRow}
+      <p>No image available for this commander.</p>
+    `);
+  }
 }
 
 function openAddDeckModal(ownerId, onSaved, preselected) {
@@ -304,69 +397,102 @@ function renderStats() {
   }
 
   const byPerson = stats.winsByPerson(players, games);
-  const topCommanders = stats.winsByCommanderRanked(games, 5);
-  const mostPlayed = stats.mostPlayedCommanders(games, 5);
+  // Passing Infinity as the limit is a clean way to get "everything" out of
+  // these two functions without adding a second code path just for the
+  // full-list case — .slice(0, Infinity) just returns the whole array.
+  const topCommandersFull = stats.winsByCommanderRanked(games, Infinity);
+  const mostPlayedFull = stats.mostPlayedCommanders(games, Infinity);
+  const topCommanders = topCommandersFull.slice(0, 3);
+  const mostPlayed = mostPlayedFull.slice(0, 3);
   const seatRates = stats.seatPositionWinRates(games);
   const colorAll = stats.colorBreakdown(games);
   const comboAll = stats.colorComboBreakdown(games);
+  // Max is computed from the *full* list, but since everything's sorted
+  // descending, the top-3 slice always contains that same max value anyway —
+  // so bar widths stay visually consistent whether you're looking at the
+  // page or the "view all" modal.
   const maxPersonWins = Math.max(1, ...byPerson.map((r) => r.wins));
-  const maxCmdWins = Math.max(1, ...topCommanders.map((r) => r.wins));
-  const maxPlayed = Math.max(1, ...mostPlayed.map((r) => r.played));
+  const maxCmdWins = Math.max(1, ...topCommandersFull.map((r) => r.wins));
+  const maxPlayed = Math.max(1, ...mostPlayedFull.map((r) => r.played));
   const maxColorPlayed = Math.max(1, ...colorAll.map((r) => r.played));
   const maxComboPlayed = Math.max(1, ...comboAll.map((r) => r.played));
 
   viewEl.innerHTML = `
     <h2>Wins by person</h2>
     <div class="card">
-      ${byPerson.map((r) => barRow(r.name, r.wins, maxPersonWins, `${r.wins} win${r.wins === 1 ? '' : 's'}`, rateColor(r.winRate))).join('')}
+      ${byPerson.slice(0, 3).map((r) => barRow(r.name, r.wins, maxPersonWins, `${r.wins} win${r.wins === 1 ? '' : 's'}`, rateColor(r.winRate))).join('')}
     </div>
+    ${byPerson.length > 3 ? `<button class="btn btn-ghost" id="view-all-person">View all ${byPerson.length} players</button>` : ''}
 
     <h2>Top commanders by wins</h2>
     <div class="card card-dark">
       ${topCommanders.length ? topCommanders.map((r) => barRow(r.commanderName, r.wins, maxCmdWins, `${r.wins} win${r.wins === 1 ? '' : 's'}`, 'var(--accent)', true)).join('') : '<p style="color:rgba(243,237,227,0.6);">No wins logged yet.</p>'}
     </div>
+    ${topCommandersFull.length > 3 ? `<button class="btn btn-ghost" id="view-all-commanders">View all ${topCommandersFull.length} commanders</button>` : ''}
 
     <h2>Most played commanders</h2>
     <div class="card">
       ${mostPlayed.map((r) => barRow(r.commanderName, r.played, maxPlayed, `${r.played} game${r.played === 1 ? '' : 's'}`)).join('')}
     </div>
+    ${mostPlayedFull.length > 3 ? `<button class="btn btn-ghost" id="view-all-played">View all ${mostPlayedFull.length} commanders</button>` : ''}
 
     <h2>Win rate by table position</h2>
     <div class="card">
       <div class="gauge-row">
         ${seatRates.map((r) => `
           <div>
-            ${arcGaugeHTML({ percent: r.winRate * 100, size: 96, strokeWidth: 9, color: rateColor(r.winRate), valueText: `${Math.round(r.winRate * 100)}%`, labelText: `${r.wins}/${r.played}` })}
+            ${arcGaugeHTML({ percent: r.winRate * 100, size: 96, strokeWidth: 9, color: rateColor(r.winRate), valueText: `${Math.round(r.winRate * 100)}%` })}
             <div class="gauge-caption">${seatLabel(r.label)}</div>
           </div>
         `).join('')}
       </div>
     </div>
 
-    <h2>Color combinations — everyone</h2>
+    <h2>Winning color combinations — everyone</h2>
     <div class="card">
       ${comboAll.length ? comboAll.map((r) => comboBarRow(r, maxComboPlayed)).join('') : '<p>No color data yet.</p>'}
     </div>
 
-    <h2>Color combinations by player</h2>
+    <h2>Winning color combinations by player</h2>
     <label for="combo-player-select">Player</label>
     <select id="combo-player-select">
       ${players.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}
     </select>
     <div class="card" id="combo-by-player-card"></div>
 
-    <h2>Individual colors</h2>
+    <h2>Winning individual colors</h2>
     <div class="card">
       ${colorAll.length ? colorAll.map((r) => colorBarRow(r, maxColorPlayed)).join('') : '<p>No color data yet.</p>'}
     </div>
 
-    <h2>Colors by player</h2>
+    <h2>Winning colors by player</h2>
     <label for="color-player-select">Player</label>
     <select id="color-player-select">
       ${players.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}
     </select>
     <div class="card" id="color-by-player-card"></div>
   `;
+
+  const viewAllPerson = document.getElementById('view-all-person');
+  if (viewAllPerson) {
+    viewAllPerson.addEventListener('click', () => {
+      openStatListModal('Wins by person', byPerson.map((r) => barRow(r.name, r.wins, maxPersonWins, `${r.wins} win${r.wins === 1 ? '' : 's'}`, rateColor(r.winRate))).join(''));
+    });
+  }
+
+  const viewAllCommanders = document.getElementById('view-all-commanders');
+  if (viewAllCommanders) {
+    viewAllCommanders.addEventListener('click', () => {
+      openStatListModal('Top commanders by wins', topCommandersFull.map((r) => barRow(r.commanderName, r.wins, maxCmdWins, `${r.wins} win${r.wins === 1 ? '' : 's'}`, 'var(--accent)')).join(''));
+    });
+  }
+
+  const viewAllPlayed = document.getElementById('view-all-played');
+  if (viewAllPlayed) {
+    viewAllPlayed.addEventListener('click', () => {
+      openStatListModal('Most played commanders', mostPlayedFull.map((r) => barRow(r.commanderName, r.played, maxPlayed, `${r.played} game${r.played === 1 ? '' : 's'}`)).join(''));
+    });
+  }
 
   const colorPlayerSelect = document.getElementById('color-player-select');
   function renderColorByPlayer() {
@@ -389,6 +515,13 @@ function renderStats() {
   }
   comboPlayerSelect.addEventListener('change', renderComboByPlayer);
   renderComboByPlayer();
+}
+
+function openStatListModal(title, rowsHtml) {
+  openModal(`
+    <h2>${title}</h2>
+    <div class="card">${rowsHtml}</div>
+  `);
 }
 
 function seatLabel(l) {

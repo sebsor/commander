@@ -1,27 +1,9 @@
 // scryfall.js — thin wrapper around the Scryfall REST API.
 // No API key required. Scryfall's own docs say browser JS callers should
 // leave the User-Agent header alone (browsers block overriding it anyway)
-// and just send an Accept header. Network failures are caught so a bad
-// connection never blocks logging a game — you can always fall back to
-// manual entry.
+// and just send an Accept header.
 
 const scryfall = {
-  async findCommander(name) {
-    if (!name || !name.trim()) return null;
-    try {
-      const res = await fetch(
-        `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name.trim())}`,
-        { headers: { Accept: 'application/json' } }
-      );
-      if (!res.ok) return null;
-      const card = await res.json();
-      return cardToCommanderSummary(card);
-    } catch (e) {
-      console.warn('Scryfall lookup failed, falling back to manual entry', e);
-      return null;
-    }
-  },
-
   async autocomplete(partialName) {
     if (!partialName || partialName.trim().length < 2) return [];
     try {
@@ -83,7 +65,7 @@ function cardToCommanderSummary(card) {
 // Individual mana symbol SVGs live at a predictable, stable Scryfall CDN
 // path — no API call needed to fetch these, unlike card data.
 function manaSymbolUrl(letter) {
-  return `https://img.scryfall.com/symbology/${letter.toUpperCase()}.svg`;
+  return `https://svgs.scryfall.io/card-symbols/${letter.toUpperCase()}.svg`;
 }
 
 // Color identity → display info, used for deck chips throughout the app

@@ -24,7 +24,6 @@ function openCommanderPicker(onSelect) {
     <div id="cmd-results" class="commander-grid">
       <p class="cmd-hint">Type a name or pick colors to search.</p>
     </div>
-    <button class="btn btn-ghost btn-block" id="cmd-manual-btn" style="margin-top:10px;">Can't find it? Enter manually</button>
   `, () => {
     const searchInput = document.getElementById('cmd-search');
     searchInput.addEventListener('input', () => {
@@ -40,10 +39,6 @@ function openCommanderPicker(onSelect) {
         });
         runCommanderSearch(state, onSelect);
       });
-    });
-
-    document.getElementById('cmd-manual-btn').addEventListener('click', () => {
-      openManualCommanderEntry(onSelect);
     });
   });
 }
@@ -78,11 +73,11 @@ async function runCommanderSearch(state, onSelect) {
   if (!document.getElementById('cmd-results')) return; // closed while awaiting
 
   if (results === null) {
-    resultsEl.innerHTML = `<p class="cmd-hint">Couldn't reach Scryfall. Check your connection, or enter the commander manually below.</p>`;
+    resultsEl.innerHTML = `<p class="cmd-hint">Couldn't reach Scryfall. Check your connection and try again.</p>`;
     return;
   }
   if (results.length === 0) {
-    resultsEl.innerHTML = `<p class="cmd-hint">No commanders matched. Try different colors or spelling — or enter manually below.</p>`;
+    resultsEl.innerHTML = `<p class="cmd-hint">No commanders matched. Try different colors or spelling.</p>`;
     return;
   }
 
@@ -105,44 +100,6 @@ async function runCommanderSearch(state, onSelect) {
         colorIdentity: chosen.colorIdentity,
         imageUrl: chosen.artUrl,
         scryfallId: chosen.scryfallId
-      });
-    });
-  });
-}
-
-// Fallback for commanders Scryfall doesn't have yet (brand new spoilers) or
-// for when you're offline — same fuzzy lookup Add Deck used before the picker existed.
-function openManualCommanderEntry(onSelect) {
-  openModal(`
-    <h2>Enter Commander Manually</h2>
-    <label for="manual-cmd-name">Commander name</label>
-    <input type="text" id="manual-cmd-name" placeholder="e.g. Zur the Enchanter" autofocus>
-    <div id="manual-cmd-preview" style="margin:10px 0;"></div>
-    <button class="btn btn-primary btn-block" id="manual-cmd-save">Use this name</button>
-  `, () => {
-    let fetched = null;
-    const input = document.getElementById('manual-cmd-name');
-    const preview = document.getElementById('manual-cmd-preview');
-
-    input.addEventListener('blur', async () => {
-      const name = input.value.trim();
-      if (!name) return;
-      preview.innerHTML = `<p style="color:var(--ink-faint);">Looking up on Scryfall…</p>`;
-      fetched = await scryfall.findCommander(name);
-      preview.innerHTML = fetched
-        ? `<div class="color-chip-row">${colorIdentityHex(fetched.colorIdentity).map((c) => `<span style="background:${c}"></span>`).join('')}</div><p style="margin-top:6px;">Found — colors filled in.</p>`
-        : `<p style="color:var(--ink-faint);">Not found — will save without color identity.</p>`;
-    });
-
-    document.getElementById('manual-cmd-save').addEventListener('click', () => {
-      const name = input.value.trim();
-      if (!name) return;
-      closeModal();
-      onSelect({
-        name: fetched?.name || name,
-        colorIdentity: fetched?.colorIdentity || [],
-        imageUrl: fetched?.artUrl || null,
-        scryfallId: fetched?.scryfallId || null
       });
     });
   });
