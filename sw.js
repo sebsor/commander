@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tavern-ledger-v41';
+const CACHE_NAME = 'tavern-ledger-v42';
 const CORE_ASSETS = [
   './',
   './index.html',
