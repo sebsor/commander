@@ -12,18 +12,20 @@ function uid() {
 function loadRaw() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) {
-    return { players: [], decks: [], games: [] };
+    return { players: [], decks: [], games: [], unlockedAchievements: [], achievementsBackfilled: false };
   }
   try {
     const parsed = JSON.parse(raw);
     return {
       players: parsed.players || [],
       decks: parsed.decks || [],
-      games: parsed.games || []
+      games: parsed.games || [],
+      unlockedAchievements: parsed.unlockedAchievements || [],
+      achievementsBackfilled: parsed.achievementsBackfilled || false
     };
   } catch (e) {
     console.error('Corrupt data, starting fresh', e);
-    return { players: [], decks: [], games: [] };
+    return { players: [], decks: [], games: [], unlockedAchievements: [], achievementsBackfilled: false };
   }
 }
 
@@ -123,7 +125,37 @@ const db = {
     saveRaw({
       players: data.players || [],
       decks: data.decks || [],
-      games: data.games || []
+      games: data.games || [],
+      unlockedAchievements: data.unlockedAchievements || [],
+      achievementsBackfilled: data.achievementsBackfilled || false
     });
+  },
+  resetAll() {
+    saveRaw({ players: [], decks: [], games: [], unlockedAchievements: [], achievementsBackfilled: false });
+  },
+
+  // ---- Achievement tracking ----
+  // Separate from the achievement *definitions* (those live in
+  // achievements.js) — this is just "which ones has the app already shown
+  // a popup for," so a re-render of the Achievements tab doesn't depend on
+  // this at all (that tab always computes live truth). This is purely for
+  // detecting *newly* true achievements after a game save.
+  getUnlockedAchievementKeys() {
+    return loadRaw().unlockedAchievements;
+  },
+  markAchievementsUnlocked(keys) {
+    const data = loadRaw();
+    const set = new Set(data.unlockedAchievements);
+    keys.forEach((k) => set.add(k));
+    data.unlockedAchievements = Array.from(set);
+    saveRaw(data);
+  },
+  isAchievementsBackfilled() {
+    return loadRaw().achievementsBackfilled;
+  },
+  markAchievementsBackfilled() {
+    const data = loadRaw();
+    data.achievementsBackfilled = true;
+    saveRaw(data);
   }
 };

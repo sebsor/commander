@@ -7,7 +7,7 @@
 // one is for a human to glance at, that one is for the browser's cache), so
 // nothing keeps them in sync automatically. Bumping this is now part of the
 // same routine as bumping the cache version.
-const APP_VERSION = 'v38';
+const APP_VERSION = 'v41';
 
 const viewEl = document.getElementById('view');
 const headerTitle = document.getElementById('header-title');
@@ -23,7 +23,7 @@ function setActiveNav(view) {
 
 function navigate(view) {
   setActiveNav(view);
-  const titles = { home: '', players: 'Players', decks: 'Commanders', stats: 'Stats', log: 'Log a Game' };
+  const titles = { home: '', players: 'Players', decks: 'Commanders', stats: 'Stats', log: 'Log a Game', achievements: 'Achievements' };
   headerTitle.textContent = titles[view] ?? 'Round Table';
   headerVersion.textContent = view === 'home' ? APP_VERSION : '';
   closeModal();
@@ -33,6 +33,7 @@ function navigate(view) {
   else if (view === 'decks') renderDecks();
   else if (view === 'stats') renderStats();
   else if (view === 'log') startLog();
+  else if (view === 'achievements') renderAchievements();
 }
 
 navButtons.forEach((btn) => {
@@ -125,7 +126,7 @@ function renderHome() {
 
   if (players.length === 0) {
     viewEl.innerHTML = `
-      <img src="icons/logo-full.png" alt="The Tavern Ledger" style="display:block; width:260px; max-width:78%; margin:8px auto 0;">
+      <img src="icons/logo-full.png" alt="The Tavern Ledger" id="home-logo" class="reset-trigger" style="display:block; width:260px; max-width:78%; margin:8px auto 0;">
       <div class="empty-state" style="margin-top: 34px;">
         <span class="glyph">♜</span>
         <h2>Set the table</h2>
@@ -134,13 +135,14 @@ function renderHome() {
       </div>
     `;
     document.getElementById('go-players').addEventListener('click', () => navigate('players'));
+    attachResetTrigger(document.getElementById('home-logo'));
     return;
   }
 
   const recent = games.slice(0, 6);
   viewEl.classList.add('has-action-bar');
   viewEl.innerHTML = `
-    <img src="icons/logo-full.png" alt="The Tavern Ledger" style="display:block; width:260px; max-width:78%; margin:8px auto 22px;">
+    <img src="icons/logo-full.png" alt="The Tavern Ledger" id="home-logo" class="reset-trigger" style="display:block; width:260px; max-width:78%; margin:8px auto 22px;">
     <h2>Recent games</h2>
     ${recent.length === 0 ? `<p>No games logged yet.</p>` : recent.map(gameRowHTML).join('')}
     <div class="action-bar">
@@ -148,6 +150,7 @@ function renderHome() {
     </div>
   `;
   document.getElementById('log-game-btn').addEventListener('click', () => navigate('log'));
+  attachResetTrigger(document.getElementById('home-logo'));
   recent.forEach((g) => {
     const el = document.getElementById('game-' + g.id);
     if (el) el.addEventListener('click', () => showGameDetail(g));
@@ -175,6 +178,50 @@ function gameRowHTML(g) {
       </div>
     </div>
   `;
+}
+
+// Hold the logo for 6s to reach the reset flow — deliberately hidden rather
+// than a visible danger-zone button, since wiping every player/commander/game
+// should be as close to impossible-by-accident as a UI action gets. Pointer
+// events (not separate touch/mouse listeners) unify touch and mouse handling
+// in one set of listeners, since a "press and hold" gesture means the same
+// thing regardless of input type.
+const RESET_HOLD_MS = 6000;
+let resetHoldTimer = null;
+
+function attachResetTrigger(logoEl) {
+  if (!logoEl) return;
+  const start = () => {
+    logoEl.classList.add('holding');
+    resetHoldTimer = setTimeout(() => {
+      logoEl.classList.remove('holding');
+      openResetConfirmModal();
+    }, RESET_HOLD_MS);
+  };
+  const cancel = () => {
+    clearTimeout(resetHoldTimer);
+    logoEl.classList.remove('holding');
+  };
+  logoEl.addEventListener('pointerdown', start);
+  logoEl.addEventListener('pointerup', cancel);
+  logoEl.addEventListener('pointerleave', cancel);
+  logoEl.addEventListener('pointercancel', cancel);
+}
+
+function openResetConfirmModal() {
+  openModal(`
+    <h2>Reset all data?</h2>
+    <p>This permanently deletes every player, commander, and game. There's no undo.</p>
+    <button class="btn btn-danger btn-block" id="confirm-reset">Reset Everything</button>
+    <button class="btn btn-ghost btn-block" id="cancel-reset" style="margin-top:8px;">Cancel</button>
+  `, () => {
+    document.getElementById('confirm-reset').addEventListener('click', () => {
+      db.resetAll();
+      closeModal();
+      navigate('home');
+    });
+    document.getElementById('cancel-reset').addEventListener('click', closeModal);
+  });
 }
 
 function showGameDetail(g) {
@@ -337,6 +384,14 @@ function renderDecks() {
 function showCommanderPreview(d) {
   const chips = colorIdentityHex(d.colorIdentity);
   const chipRow = `<div class="color-chip-row" style="margin-bottom:10px;">${chips.map((c) => `<span style="background:${c}"></span>`).join('')}</div>`;
+  const deleteBtnHtml = `<button class="btn btn-danger btn-block" id="delete-deck" style="margin-top:14px;">Delete this commander</button>`;
+  const wireDeleteButton = () => {
+    document.getElementById('delete-deck').addEventListener('click', () => {
+      db.deleteDeck(d.id);
+      closeModal();
+      renderDecks();
+    });
+  };
 
   if (d.scryfallId) {
     openModal(`
@@ -346,6 +401,7 @@ function showCommanderPreview(d) {
         <span class="img-loading-text" id="card-preview-status">Loading image…</span>
         <img id="card-preview-img" src="https://api.scryfall.com/cards/${d.scryfallId}?format=image&version=large" alt="${d.commanderName}">
       </div>
+      ${deleteBtnHtml}
     `, () => {
       const img = document.getElementById('card-preview-img');
       const status = document.getElementById('card-preview-status');
@@ -356,6 +412,7 @@ function showCommanderPreview(d) {
       img.addEventListener('error', () => {
         status.textContent = "Couldn't load the image.";
       });
+      wireDeleteButton();
     });
   } else if (d.imageUrl) {
     // Older decks (added back when manual entry existed, or a commander
@@ -368,13 +425,15 @@ function showCommanderPreview(d) {
       ${chipRow}
       <img src="${d.imageUrl}" alt="${d.commanderName}" style="width:100%; border-radius:16px; display:block; box-shadow:var(--shadow-lg);">
       <p style="font-size:0.8rem; margin-top:10px;">Only the artwork is available for this commander, not the full card — it was added before Scryfall matching was required.</p>
-    `);
+      ${deleteBtnHtml}
+    `, wireDeleteButton);
   } else {
     openModal(`
       <h2>${d.commanderName}</h2>
       ${chipRow}
       <p>No image available for this commander.</p>
-    `);
+      ${deleteBtnHtml}
+    `, wireDeleteButton);
   }
 }
 
@@ -447,6 +506,35 @@ function openAddDeckModal(ownerId, onSaved, preselected) {
       else renderDecks();
     });
   });
+}
+
+// ---------------- Achievements ----------------
+function renderAchievements() {
+  const games = db.getGames();
+  const players = db.getPlayers();
+
+  const milestonesHtml = MILESTONES.map((m) => achievementBadgeHTML(m.name, m.description, m.check(games))).join('');
+
+  const playerSectionsHtml = players.map((p) => {
+    const badges = PLAYER_ACHIEVEMENTS.map((a) => achievementBadgeHTML(a.name, a.description, a.check(p.id, games))).join('');
+    return `<h3 style="margin-top:18px;">${p.name}</h3><div class="achievement-grid">${badges}</div>`;
+  }).join('');
+
+  viewEl.innerHTML = `
+    <h2>Milestones</h2>
+    <div class="achievement-grid">${milestonesHtml}</div>
+    ${playerSectionsHtml || '<p>Add players to start unlocking achievements.</p>'}
+  `;
+}
+
+function achievementBadgeHTML(name, description, unlocked) {
+  return `
+    <div class="achievement-badge ${unlocked ? 'unlocked' : 'locked'}">
+      <div class="achievement-icon">${unlocked ? '🏆' : '🔒'}</div>
+      <div class="achievement-name">${name}</div>
+      <div class="achievement-desc">${description}</div>
+    </div>
+  `;
 }
 
 // ---------------- Stats ----------------
@@ -862,9 +950,74 @@ function saveGame() {
     winnerId: logState.winnerSeat,
     winningDeckId: winnerSeatData.deckId
   });
+
+  // Achievements only ever change as a result of a game being saved, so
+  // this is the one place that needs to check. The Achievements tab itself
+  // never consults "already unlocked" state at all — it always computes
+  // live truth — this check exists purely to detect what's *newly* true,
+  // for the popup.
+  const previouslyUnlocked = db.getUnlockedAchievementKeys();
+  const newlyUnlocked = checkForNewlyUnlocked(previouslyUnlocked, db.getGames(), db.getPlayers());
+  if (newlyUnlocked.length > 0) {
+    db.markAchievementsUnlocked(newlyUnlocked.map((n) => n.key));
+  }
+
   logState = null;
-  navigate('home');
+  navigate('home'); // land on Home first, then show the toast over it
+  if (newlyUnlocked.length > 0) {
+    queueAchievementToasts(newlyUnlocked);
+  }
+}
+
+// Toasts queue rather than stack, since a single game can plausibly unlock
+// more than one achievement at once (e.g. someone's first game ever is also
+// their first win) — showing them one at a time avoids a cluttered pile of
+// overlapping popups.
+let toastQueue = [];
+let toastShowing = false;
+
+function queueAchievementToasts(items) {
+  toastQueue.push(...items);
+  if (!toastShowing) showNextToast();
+}
+
+function showNextToast() {
+  if (toastQueue.length === 0) {
+    toastShowing = false;
+    return;
+  }
+  toastShowing = true;
+  const item = toastQueue.shift();
+  const toastRoot = document.getElementById('toast-root');
+  toastRoot.innerHTML = `
+    <div class="achievement-toast" id="achievement-toast">
+      <div class="achievement-toast-icon">🏆</div>
+      <div>
+        <div class="achievement-toast-label">Achievement Unlocked</div>
+        <div class="achievement-toast-name">${item.name}</div>
+        ${item.playerName ? `<div class="achievement-toast-player">${item.playerName}</div>` : ''}
+      </div>
+    </div>
+  `;
+  const toastEl = document.getElementById('achievement-toast');
+  requestAnimationFrame(() => toastEl.classList.add('show'));
+  setTimeout(() => {
+    toastEl.classList.remove('show');
+    setTimeout(() => {
+      toastRoot.innerHTML = '';
+      showNextToast();
+    }, 350); // matches the CSS transition duration below
+  }, 3200);
 }
 
 // ---------------- Init ----------------
+// One-time backfill: without this, the very first game saved after this
+// feature ships would see every already-earned achievement as "new" (since
+// nothing has ever been marked seen before) and flood the screen with
+// toasts celebrating things that actually happened long ago.
+if (!db.isAchievementsBackfilled()) {
+  db.markAchievementsUnlocked(allTrueAchievementKeys(db.getGames(), db.getPlayers()));
+  db.markAchievementsBackfilled();
+}
+
 navigate('home');
