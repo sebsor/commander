@@ -68,6 +68,9 @@ header.app-header {
   align-items: flex-start;
   justify-content: space-between;
 }
+header.app-header.compact {
+  padding: 6px 20px 2px;
+}
 .header-version {
   font-size: 0.7rem;
   font-weight: 700;

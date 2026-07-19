@@ -7,11 +7,12 @@
 // one is for a human to glance at, that one is for the browser's cache), so
 // nothing keeps them in sync automatically. Bumping this is now part of the
 // same routine as bumping the cache version.
-const APP_VERSION = 'v42';
+const APP_VERSION = 'v43';
 
 const viewEl = document.getElementById('view');
 const headerTitle = document.getElementById('header-title');
 const headerVersion = document.getElementById('header-version');
+const headerEl = document.getElementById('app-header');
 const modalRoot = document.getElementById('modal-root');
 const navButtons = document.querySelectorAll('.bottom-nav button');
 
@@ -26,6 +27,7 @@ function navigate(view) {
   const titles = { home: '', players: 'Players', decks: 'Commanders', stats: 'Stats', log: 'Log a Game', achievements: 'Achievements' };
   headerTitle.textContent = titles[view] ?? 'Round Table';
   headerVersion.textContent = view === 'home' ? APP_VERSION : '';
+  headerEl.classList.toggle('compact', view === 'home');
   closeModal();
   viewEl.classList.remove('has-action-bar'); // only renderPlayers/renderDecks opt back in
   if (view === 'home') renderHome();
@@ -126,7 +128,7 @@ function renderHome() {
 
   if (players.length === 0) {
     viewEl.innerHTML = `
-      <img src="icons/logo-full.png" alt="The Tavern Ledger" id="home-logo" class="reset-trigger" style="display:block; width:260px; max-width:78%; margin:8px auto 0;">
+      <img src="icons/logo-full.png" alt="The Tavern Ledger" id="home-logo" class="reset-trigger" style="display:block; width:200px; max-width:70%; margin:4px auto 0;">
       <div class="empty-state" style="margin-top: 34px;">
         <span class="glyph">♜</span>
         <h2>Set the table</h2>
@@ -142,7 +144,7 @@ function renderHome() {
   const recent = games.slice(0, 6);
   viewEl.classList.add('has-action-bar');
   viewEl.innerHTML = `
-    <img src="icons/logo-full.png" alt="The Tavern Ledger" id="home-logo" class="reset-trigger" style="display:block; width:260px; max-width:78%; margin:8px auto 22px;">
+    <img src="icons/logo-full.png" alt="The Tavern Ledger" id="home-logo" class="reset-trigger" style="display:block; width:200px; max-width:70%; margin:4px auto 18px;">
     <h2>Recent games</h2>
     ${recent.length === 0 ? `<p>No games logged yet.</p>` : recent.map(gameRowHTML).join('')}
     <div class="action-bar">
