@@ -7,7 +7,7 @@
 // one is for a human to glance at, that one is for the browser's cache), so
 // nothing keeps them in sync automatically. Bumping this is now part of the
 // same routine as bumping the cache version.
-const APP_VERSION = 'v43';
+const APP_VERSION = 'v44';
 
 const viewEl = document.getElementById('view');
 const headerTitle = document.getElementById('header-title');
